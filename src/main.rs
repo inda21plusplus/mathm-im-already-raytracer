@@ -2,7 +2,7 @@ use std::{fs::File, time::Instant};
 
 use mathm_im_already_raytracer::{
     shapes::{BoundedPlane, Plane, Shape, ShapeKind, Sphere},
-    Camera, Error, Material, Quaternion, Vec3, World,
+    Camera, Error, Material, Quaternion, Vec3, Vec4, World,
 };
 
 fn main() -> Result<(), Error> {
@@ -14,7 +14,7 @@ fn main() -> Result<(), Error> {
         },
         shapes: vec![
             Shape {
-                material: Material::color(Vec3::new(1., 1., 1.)),
+                material: Material::color(Vec4::new(1., 1., 1., 1.)),
                 kind: ShapeKind::BoundedPlane(BoundedPlane {
                     center: Vec3::new(0., -5., 0.),
                     a: Vec3::new(5., 0., 0.),
@@ -22,7 +22,7 @@ fn main() -> Result<(), Error> {
                 }),
             },
             Shape {
-                material: Material::color(Vec3::new(1., 0., 0.)),
+                material: Material::color(Vec4::new(1., 0., 0., 1.)),
                 kind: ShapeKind::BoundedPlane(BoundedPlane {
                     center: Vec3::new(-5., 0., 0.),
                     a: Vec3::new(0., 0., 5.),
@@ -30,7 +30,7 @@ fn main() -> Result<(), Error> {
                 }),
             },
             Shape {
-                material: Material::color(Vec3::new(0., 1., 0.)),
+                material: Material::color(Vec4::new(0., 1., 0., 1.)),
                 kind: ShapeKind::BoundedPlane(BoundedPlane {
                     center: Vec3::new(5., 0., 0.),
                     a: Vec3::new(0., 5., 0.),
@@ -38,17 +38,14 @@ fn main() -> Result<(), Error> {
                 }),
             },
             Shape {
-                material: Material {
-                    color: Vec3::new(1., 1., 0.8),
-                    specularity: 0.0,
-                },
+                material: Material::color(Vec4::new(1., 1., 0.8, 1.)),
                 kind: ShapeKind::Plane(Plane {
                     center: Vec3::new(0., 0., 5.),
                     normal: Vec3::new(0., 0., 1.),
                 }),
             },
             Shape {
-                material: Material::color(Vec3::new(1., 1., 1.)),
+                material: Material::color(Vec4::new(1., 1., 1., 1.)),
                 kind: ShapeKind::BoundedPlane(BoundedPlane {
                     center: Vec3::new(0., 5., 0.),
                     a: Vec3::new(0., 0., 5.),
@@ -56,9 +53,16 @@ fn main() -> Result<(), Error> {
                 }),
             },
             Shape {
-                material: Material::new(Vec3::new(0., 0., 1.), 0.5),
+                material: Material::new(Vec4::new(0., 0., 1., 1.), 0.5, 1.),
                 kind: ShapeKind::Sphere(Sphere {
-                    center: Vec3::new(-1., -3., 3.),
+                    center: Vec3::new(-1.5, -3., 3.),
+                    radius: 2.,
+                }),
+            },
+            Shape {
+                material: Material::new(Vec4::new(1., 0., 1., 1.), 0.5, 1.),
+                kind: ShapeKind::Sphere(Sphere {
+                    center: Vec3::new(1.5, -3., 0.),
                     radius: 2.,
                 }),
             },
@@ -72,7 +76,7 @@ fn main() -> Result<(), Error> {
     let data = image.get_raw_data();
     let file = File::create("output.png").unwrap();
     let mut encoder = png::Encoder::new(file, image.width as u32, image.heigth as u32);
-    encoder.set_color(png::ColorType::Rgb);
+    encoder.set_color(png::ColorType::Rgba);
     encoder.set_depth(png::BitDepth::Eight);
     encoder.write_header()?.write_image_data(&data)?;
 

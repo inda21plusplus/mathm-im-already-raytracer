@@ -1,9 +1,31 @@
-use crate::{pixel, Material, Ray, Vec3};
+use crate::{Material, Quaternion, Ray, Vec3};
 
 pub struct Intersection {
+    pub ray_dir: Vec3,
     pub dist: f32,
     pub point: Vec3,
     pub normal: Vec3,
+}
+
+impl Intersection {
+    pub fn reflection(&self) -> Ray {
+        Ray::new(
+            self.point,
+            Quaternion::rotation_3d(180f32.to_radians(), self.normal) * -self.ray_dir,
+        )
+    }
+    // pub fn refraction(&self) -> Ray {
+    //     let side = ray.direction.cross(normal);
+
+    //     let theta1 = ray.direction.angle_between(-normal);
+    //     let theta2 = (refrative_index / material::AIR_REFRACTIVE_INDEX * theta1.sin()).asin();
+    //     let r2 = Quaternion::rotation_3d(theta2, side) * -normal;
+
+    //     Ray {
+    //         origin: point,
+    //         direction: r2,
+    //     }
+    // }
 }
 
 pub struct Shape {
@@ -42,6 +64,7 @@ impl Intersect for Plane {
         let dist = (self.center - ray.origin).dot(self.normal) / ray.direction.dot(self.normal);
         if 0. < dist && dist < 1_000_000. {
             Some(Intersection {
+                ray_dir: ray.direction,
                 dist,
                 point: ray.origin + ray.direction * dist,
                 normal: self.normal,
@@ -74,6 +97,7 @@ impl Intersect for BoundedPlane {
             && c2p_proj_b_hat.magnitude_squared() <= self.b.magnitude_squared()
         {
             Some(Intersection {
+                ray_dir: ray.direction,
                 dist,
                 point,
                 normal,
@@ -98,6 +122,7 @@ impl Intersect for Sphere {
         if dist >= 0. {
             let point = ray.origin + dist * ray.direction;
             Some(Intersection {
+                ray_dir: ray.direction,
                 dist,
                 point,
                 normal: (point - self.center).normalized(),

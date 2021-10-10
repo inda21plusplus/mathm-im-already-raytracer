@@ -1,13 +1,13 @@
-use crate::Vec3;
+use crate::Vec4;
 
 pub struct Image {
-    pub data: Vec<Vec3>,
+    pub data: Vec<Vec4>,
     pub width: usize,
     pub heigth: usize,
 }
 
 impl Image {
-    pub fn new(data: Vec<Vec3>, width: usize, heigth: usize) -> Self {
+    pub fn new(data: Vec<Vec4>, width: usize, heigth: usize) -> Self {
         assert_eq!(data.len(), width * heigth);
         Self {
             data,
