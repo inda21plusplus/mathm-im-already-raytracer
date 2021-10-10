@@ -8,7 +8,10 @@ pub mod pixel;
 pub mod shapes;
 pub mod world;
 
+mod cornellbox;
+
 pub use camera::Camera;
+pub use cornellbox::cornellbox;
 pub use error::Error;
 pub use image::Image;
 pub use material::Material;

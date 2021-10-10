@@ -56,7 +56,11 @@ impl<'c> Iterator for Rays<'c> {
 
         self.current += 1;
 
-        Some((Ray::new(self.camera.position, direction), x, y))
+        Some((
+            Ray::new(self.camera.position, self.camera.orientation * direction),
+            x,
+            y,
+        ))
     }
     fn size_hint(&self) -> (usize, Option<usize>) {
         let size = self.width * self.heigth;

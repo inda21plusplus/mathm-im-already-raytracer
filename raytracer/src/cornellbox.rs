@@ -1,12 +1,10 @@
-use std::{fs::File, time::Instant};
-
-use mathm_im_already_raytracer::{
+use crate::{
     shapes::{BoundedPlane, Plane, Shape, ShapeKind, Sphere},
-    Camera, Error, Material, Quaternion, Vec3, Vec4, World,
+    Camera, Material, Quaternion, Vec3, Vec4, World,
 };
 
-fn main() -> Result<(), Error> {
-    let world = World {
+pub fn cornellbox() -> World {
+    World {
         camera: Camera {
             position: Vec3::new(0., 0., -10.),
             orientation: Quaternion::identity(),
@@ -15,10 +13,9 @@ fn main() -> Result<(), Error> {
         shapes: vec![
             Shape {
                 material: Material::color(Vec4::new(1., 1., 1., 1.)),
-                kind: ShapeKind::BoundedPlane(BoundedPlane {
+                kind: ShapeKind::Plane(Plane {
                     center: Vec3::new(0., -5., 0.),
-                    a: Vec3::new(5., 0., 0.),
-                    b: Vec3::new(0., 0., 5.),
+                    normal: Vec3::new(0., 1., 0.),
                 }),
             },
             Shape {
@@ -39,9 +36,10 @@ fn main() -> Result<(), Error> {
             },
             Shape {
                 material: Material::color(Vec4::new(1., 1., 0.8, 1.)),
-                kind: ShapeKind::Plane(Plane {
+                kind: ShapeKind::BoundedPlane(BoundedPlane {
                     center: Vec3::new(0., 0., 5.),
-                    normal: Vec3::new(0., 0., 1.),
+                    a: Vec3::new(5., 0., 0.),
+                    b: Vec3::new(0., 5., 0.),
                 }),
             },
             Shape {
@@ -67,18 +65,5 @@ fn main() -> Result<(), Error> {
                 }),
             },
         ],
-    };
-
-    let start = Instant::now();
-    let image = world.render(1000, 1000);
-    let dur = start.elapsed();
-    println!("{}ms", dur.as_millis());
-    let data = image.get_raw_data();
-    let file = File::create("output.png").unwrap();
-    let mut encoder = png::Encoder::new(file, image.width as u32, image.heigth as u32);
-    encoder.set_color(png::ColorType::Rgba);
-    encoder.set_depth(png::BitDepth::Eight);
-    encoder.write_header()?.write_image_data(&data)?;
-
-    Ok(())
+    }
 }
