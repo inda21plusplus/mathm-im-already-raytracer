@@ -1,11 +1,43 @@
-use vek::Lerp;
-
 use crate::{Quaternion, Ray, Vec3};
 
 pub struct Camera {
     pub position: Vec3,
     pub orientation: Quaternion,
     pub fov: f32,
+    pub mapping_function: MappingFunction,
+}
+
+pub enum MappingFunction {
+    Linear,
+    Unlinear,
+    Circular,
+}
+
+impl MappingFunction {
+    pub fn get_direction(&self, x01: f32, y01: f32, fov: f32, aspect_ratio: f32) -> Vec3 {
+        match self {
+            Self::Linear => Vec3 {
+                x: x01.lerp(-1., 1.) * (fov / 2.).tan() * aspect_ratio,
+                y: y01.lerp(-1., 1.) * (fov / 2.).tan(),
+                z: 1.,
+            },
+            Self::Unlinear => Vec3 {
+                x: (x01.lerp(-1., 1.) * fov / 2.).tan() * aspect_ratio,
+                y: (y01.lerp(-1., 1.) * fov / 2.).tan(),
+                z: 1.,
+            },
+            Self::Circular => {
+                let x = x01.lerp(-1., 1.) * aspect_ratio;
+                let y = y01.lerp(-1., 1.);
+                Vec3 {
+                    x,
+                    y,
+                    z: (1. - x * x - y * y).sqrt(),
+                }
+            }
+        }
+        .normalized()
+    }
 }
 
 impl Camera {
@@ -34,25 +66,18 @@ impl<'c> Iterator for Rays<'c> {
         }
 
         let v_fov = self.camera.fov;
-        let h_fov = v_fov * self.width as f32 / self.heigth as f32;
+        let aspect_ratio = self.width as f32 / self.heigth as f32;
 
         let x = self.current % self.width;
         let y = self.current / self.width;
 
-        // let yaw = (x as f32 / (self.width - 1) as f32).lerp(-h_fov / 2., h_fov / 2.);
-        // let pitch = (y as f32 / (self.heigth - 1) as f32).lerp(v_fov / 2., -v_fov / 2.);
+        let x01 = x as f32 / (self.width - 1) as f32;
+        let y01 = 1. - (y as f32 / (self.heigth - 1) as f32);
 
-        let top = Lerp::lerp(
-            Vec3::new(-1. / 3f32.sqrt(), 1. / 3f32.sqrt(), 1. / 3f32.sqrt()),
-            Vec3::new(1. / 3f32.sqrt(), 1. / 3f32.sqrt(), 1. / 3f32.sqrt()),
-            x as f32 / (self.width - 1) as f32,
-        );
-        let bot = Lerp::lerp(
-            Vec3::new(-1. / 3f32.sqrt(), -1. / 3f32.sqrt(), 1. / 3f32.sqrt()),
-            Vec3::new(1. / 3f32.sqrt(), -1. / 3f32.sqrt(), 1. / 3f32.sqrt()),
-            x as f32 / (self.width - 1) as f32,
-        );
-        let direction = Lerp::lerp(top, bot, y as f32 / (self.heigth - 1) as f32).normalized();
+        let direction = self
+            .camera
+            .mapping_function
+            .get_direction(x01, y01, v_fov, aspect_ratio);
 
         self.current += 1;
 

@@ -1,16 +1,18 @@
 use crate::{
+    camera::MappingFunction,
     shapes::{BoundedPlane, Plane, Shape, ShapeKind, Sphere},
-    Camera, Material, Quaternion, Vec3, Vec4, World,
+    Camera, Material, Quaternion, Vec3, Vec4,
 };
 
-pub fn cornellbox() -> World {
-    World {
-        camera: Camera {
+pub fn cornellbox() -> (Camera, Vec<Shape>) {
+    (
+        Camera {
             position: Vec3::new(0., 0., -10.),
             orientation: Quaternion::identity(),
-            fov: 90f32.to_radians(),
+            fov: 70f32.to_radians(),
+            mapping_function: MappingFunction::Linear,
         },
-        shapes: vec![
+        vec![
             Shape {
                 material: Material::color(Vec4::new(1., 1., 1., 1.)),
                 kind: ShapeKind::Plane(Plane {
@@ -65,5 +67,5 @@ pub fn cornellbox() -> World {
                 }),
             },
         ],
-    }
+    )
 }

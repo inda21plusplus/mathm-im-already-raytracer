@@ -5,18 +5,16 @@ pub mod error;
 pub mod image;
 pub mod material;
 pub mod pixel;
+pub mod presets;
+pub mod render;
 pub mod shapes;
-pub mod world;
-
-mod cornellbox;
 
 pub use camera::Camera;
-pub use cornellbox::cornellbox;
 pub use error::Error;
 pub use image::Image;
 pub use material::Material;
 pub use pixel::Pixel;
-pub use world::World;
+pub use render::render;
 
 pub type Vec3 = vek::Vec3<f32>;
 pub type Vec4 = vek::Vec4<f32>;

@@ -1,6 +1,6 @@
 use std::{fs::File, time::Instant};
 
-use im_already_raytracer::{cornellbox, Error as IARTError};
+use im_already_raytracer::{presets, render, Error as IARTError};
 use png::EncodingError;
 
 #[derive(Debug)]
@@ -22,10 +22,10 @@ impl From<EncodingError> for Error {
 }
 
 fn main() -> Result<(), Error> {
-    let world = cornellbox();
+    let (camera, shapes) = presets::cornellbox();
 
     let start = Instant::now();
-    let image = world.render(1000, 1000);
+    let image = render(&camera, &shapes, 1000, 1000);
     let dur = start.elapsed();
     println!("{}ms", dur.as_millis());
     let data = image.get_raw_data();
