@@ -5,38 +5,48 @@ use vek::Lerp;
 
 use crate::{
     shapes::{Intersect, Shape},
-    Camera, Image, Ray, Vec4,
+    Camera, Image, Ray, Vec3,
 };
 
-pub fn render(camera: &Camera, shapes: &[Shape], width: usize, heigth: usize) -> Image {
-    let mut buffer = vec![Vec4::zero(); width * heigth];
+pub fn render(camera: &Camera, shapes: &[Shape], width: usize, height: usize) -> Image {
+    let mut buffer = vec![Vec3::zero(); width * height];
     camera
-        .rays(width, heigth)
+        .rays(width, height)
         .collect::<Vec<(Ray, usize, usize)>>()
         .par_iter()
         .map(|&(ray, _, _)| ray_color(ray, shapes, 4))
         .collect_into_vec(&mut buffer);
-    Image::new(buffer, width, heigth)
+    Image::new(buffer, width, height)
 }
 
-fn ray_color(ray: Ray, shapes: &[Shape], depth: usize) -> Vec4 {
-    let mut color = Vec4::zero();
+fn ray_color(ray: Ray, shapes: &[Shape], depth: usize) -> Vec3 {
+    let mut color = Vec3::zero();
     let mut min_dist = f32::MAX;
     for shape in shapes {
-        if let Some(intersection) = shape.intersection(ray) {
-            if intersection.dist < min_dist {
-                if depth > 0 && shape.material.specularity > 0. {
-                    color = Lerp::lerp(
-                        shape.material.color,
-                        ray_color(intersection.reflection(), shapes, depth - 1),
-                        shape.material.specularity,
-                    );
-                } else {
-                    color = shape.material.color;
-                }
-                min_dist = intersection.dist;
-            }
+        let mat = &shape.material;
+        let intersection = match shape.intersection(ray) {
+            Some(i) if i.dist < min_dist => i,
+            _ => continue,
+        };
+        if depth == 0 {
+            color = mat.color;
+            min_dist = intersection.dist;
+            continue;
         }
+        let reflection_color = ray_color(intersection.reflection(mat.roughness), shapes, depth - 1);
+        let refraction_color = ray_color(
+            intersection.refraction(mat.refractive_index),
+            shapes,
+            depth - 1,
+        );
+
+        color = Lerp::lerp(
+            Lerp::lerp(refraction_color, mat.color, mat.opacity),
+            reflection_color,
+            mat.specularity,
+        );
+
+        min_dist = intersection.dist;
     }
     color
 }

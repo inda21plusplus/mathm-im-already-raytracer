@@ -1,7 +1,7 @@
 use crate::{
     camera::MappingFunction,
     shapes::{BoundedPlane, Plane, Shape, ShapeKind, Sphere},
-    Camera, Material, Quaternion, Vec3, Vec4,
+    Camera, Material, Quaternion, Vec3,
 };
 
 pub fn cornellbox() -> (Camera, Vec<Shape>) {
@@ -14,14 +14,14 @@ pub fn cornellbox() -> (Camera, Vec<Shape>) {
         },
         vec![
             Shape {
-                material: Material::color(Vec4::new(1., 1., 1., 1.)),
+                material: Material::new(Vec3::new(1., 1., 1.), 0.3, 0.1, 1., 1.),
                 kind: ShapeKind::Plane(Plane {
                     center: Vec3::new(0., -5., 0.),
                     normal: Vec3::new(0., 1., 0.),
                 }),
             },
             Shape {
-                material: Material::color(Vec4::new(1., 0., 0., 1.)),
+                material: Material::new(Vec3::new(1., 0., 0.), 0.4, 0.1, 1., 1.),
                 kind: ShapeKind::BoundedPlane(BoundedPlane {
                     center: Vec3::new(-5., 0., 0.),
                     a: Vec3::new(0., 0., 5.),
@@ -29,7 +29,7 @@ pub fn cornellbox() -> (Camera, Vec<Shape>) {
                 }),
             },
             Shape {
-                material: Material::color(Vec4::new(0., 1., 0., 1.)),
+                material: Material::new(Vec3::new(0., 1., 0.), 0.4, 0.1, 1., 1.),
                 kind: ShapeKind::BoundedPlane(BoundedPlane {
                     center: Vec3::new(5., 0., 0.),
                     a: Vec3::new(0., 5., 0.),
@@ -37,7 +37,7 @@ pub fn cornellbox() -> (Camera, Vec<Shape>) {
                 }),
             },
             Shape {
-                material: Material::color(Vec4::new(1., 1., 0.8, 1.)),
+                material: Material::new(Vec3::new(1., 1., 0.8), 0.3, 0.1, 1., 1.),
                 kind: ShapeKind::BoundedPlane(BoundedPlane {
                     center: Vec3::new(0., 0., 5.),
                     a: Vec3::new(5., 0., 0.),
@@ -45,7 +45,7 @@ pub fn cornellbox() -> (Camera, Vec<Shape>) {
                 }),
             },
             Shape {
-                material: Material::color(Vec4::new(1., 1., 1., 1.)),
+                material: Material::new(Vec3::new(1., 1., 1.), 0.3, 0.1, 1., 1.),
                 kind: ShapeKind::BoundedPlane(BoundedPlane {
                     center: Vec3::new(0., 5., 0.),
                     a: Vec3::new(0., 0., 5.),
@@ -53,17 +53,25 @@ pub fn cornellbox() -> (Camera, Vec<Shape>) {
                 }),
             },
             Shape {
-                material: Material::new(Vec4::new(0., 0., 1., 1.), 0.5, 1.),
+                material: Material::new(Vec3::new(0., 0., 1.), 0.5, 0.1, 1., 1.),
                 kind: ShapeKind::Sphere(Sphere {
                     center: Vec3::new(-1.5, -3., 3.),
                     radius: 2.,
                 }),
             },
             Shape {
-                material: Material::new(Vec4::new(1., 0., 1., 1.), 0.5, 1.),
+                material: Material::new(Vec3::new(1., 1., 0.), 0., 0., 0.5, 1.458 /* glass */),
                 kind: ShapeKind::Sphere(Sphere {
                     center: Vec3::new(1.5, -3., 0.),
                     radius: 2.,
+                }),
+            },
+            Shape {
+                material: Material::new(Vec3::new(1., 1., 1.), 0., 0., 0., 1.5),
+                kind: ShapeKind::BoundedPlane(BoundedPlane {
+                    center: Vec3::new(10., 5., 0.),
+                    a: Vec3::new(5., 0., 0.),
+                    b: Vec3::new(0., 5., 0.),
                 }),
             },
         ],

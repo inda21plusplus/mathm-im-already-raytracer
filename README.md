@@ -15,3 +15,7 @@ The ball is still wrong but the distortion is gone, at the expense of the fov be
 ![Second day](images/211010-2.png)
 
 The ball is now at the correct place! Also, planes can be bounded and reflections are working! Now it's also multithreaded!
+
+![End of second day](images/211010-3.png)
+
+The right ball is supposed to be like glass, but the refractions are not working as intended. The reflections have some randomness based on the materials roughness.

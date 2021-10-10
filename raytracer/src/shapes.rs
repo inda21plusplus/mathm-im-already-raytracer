@@ -1,4 +1,6 @@
-use crate::{Material, Quaternion, Ray, Vec3};
+use std::f32::consts::FRAC_PI_2;
+
+use crate::{material, Material, Quaternion, Ray, Vec3};
 
 pub struct Intersection {
     pub ray_dir: Vec3,
@@ -8,24 +10,44 @@ pub struct Intersection {
 }
 
 impl Intersection {
-    pub fn reflection(&self) -> Ray {
+    pub fn reflection(&self, roughness: f32) -> Ray {
+        // Two vectors orthogonal to normal
+        let a = (self.ray_dir - self.ray_dir.dot(self.normal) * self.normal).normalized();
+        let b = self.normal.cross(a);
+        let a_rot = (rand::random::<f32>() * 2. - 1.) * FRAC_PI_2 * roughness;
+        let b_rot = (rand::random::<f32>() * 2. - 1.) * FRAC_PI_2 * roughness;
+        let normal =
+            Quaternion::rotation_3d(a_rot, a) * Quaternion::rotation_3d(b_rot, b) * self.normal;
+
         Ray::new(
             self.point,
-            Quaternion::rotation_3d(180f32.to_radians(), self.normal) * -self.ray_dir,
+            Quaternion::rotation_3d(180f32.to_radians(), normal) * -self.ray_dir,
         )
     }
-    // pub fn refraction(&self) -> Ray {
-    //     let side = ray.direction.cross(normal);
+    pub fn refraction(&self, refractive_index: f32) -> Ray {
+        let side = self.ray_dir.cross(self.normal);
 
-    //     let theta1 = ray.direction.angle_between(-normal);
-    //     let theta2 = (refrative_index / material::AIR_REFRACTIVE_INDEX * theta1.sin()).asin();
-    //     let r2 = Quaternion::rotation_3d(theta2, side) * -normal;
+        let (refractive_index_change, forwards) = if self.ray_dir.dot(self.normal) > 0. {
+            (
+                refractive_index / material::AIR_REFRACTIVE_INDEX,
+                -self.normal,
+            )
+        } else {
+            (
+                material::AIR_REFRACTIVE_INDEX / refractive_index,
+                self.normal,
+            )
+        };
 
-    //     Ray {
-    //         origin: point,
-    //         direction: r2,
-    //     }
-    // }
+        let theta1 = self.ray_dir.angle_between(forwards);
+        let theta2 = (refractive_index_change * theta1.sin()).asin();
+        let r2 = Quaternion::rotation_3d(theta2, side) * forwards;
+
+        Ray {
+            origin: self.point,
+            direction: r2,
+        }
+    }
 }
 
 pub struct Shape {

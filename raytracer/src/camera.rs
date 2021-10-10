@@ -41,11 +41,11 @@ impl MappingFunction {
 }
 
 impl Camera {
-    pub fn rays(&self, width: usize, heigth: usize) -> Rays {
+    pub fn rays(&self, width: usize, height: usize) -> Rays {
         Rays {
             camera: self,
             width,
-            heigth,
+            height,
             current: 0,
         }
     }
@@ -54,25 +54,25 @@ impl Camera {
 pub struct Rays<'c> {
     camera: &'c Camera,
     width: usize,
-    heigth: usize,
+    height: usize,
     current: usize,
 }
 
 impl<'c> Iterator for Rays<'c> {
     type Item = (Ray, usize, usize);
     fn next(&mut self) -> Option<Self::Item> {
-        if self.current >= self.width * self.heigth {
+        if self.current >= self.width * self.height {
             return None;
         }
 
         let v_fov = self.camera.fov;
-        let aspect_ratio = self.width as f32 / self.heigth as f32;
+        let aspect_ratio = self.width as f32 / self.height as f32;
 
         let x = self.current % self.width;
         let y = self.current / self.width;
 
         let x01 = x as f32 / (self.width - 1) as f32;
-        let y01 = 1. - (y as f32 / (self.heigth - 1) as f32);
+        let y01 = 1. - (y as f32 / (self.height - 1) as f32);
 
         let direction = self
             .camera
@@ -88,7 +88,7 @@ impl<'c> Iterator for Rays<'c> {
         ))
     }
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let size = self.width * self.heigth;
+        let size = self.width * self.height;
         (size, Some(size))
     }
 }
