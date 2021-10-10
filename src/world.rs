@@ -1,26 +1,53 @@
 use std::f32;
 
-use crate::{shapes, Camera, Image, Vec3};
+use rayon::prelude::*;
+use vek::{Lerp, Quaternion};
+
+use crate::{
+    shapes::{Intersect, Shape},
+    Camera, Image, Ray, Vec3,
+};
 
 pub struct World {
     pub camera: Camera,
-    pub shapes: Vec<Box<dyn shapes::Shape>>,
+    pub shapes: Vec<Shape>,
 }
 
 impl World {
     pub fn render(&self, width: usize, heigth: usize) -> Image {
         let mut buffer = vec![Vec3::zero(); width * heigth];
-        for (ray, x, y) in self.camera.rays(width, heigth) {
-            let mut min_dist = f32::MAX;
-            for shape in &self.shapes {
-                if let Some(dist) = shape.intersection_dist(ray) {
-                    if 0. < dist && dist < min_dist {
-                        buffer[x + width * y] = shape.material().color;
-                        min_dist = dist;
+        self.camera
+            .rays(width, heigth)
+            .collect::<Vec<(Ray, usize, usize)>>()
+            .par_iter()
+            .map(|&(ray, _, _)| self.ray_color(ray, 1))
+            .collect_into_vec(&mut buffer);
+        Image::new(buffer, width, heigth)
+    }
+    fn ray_color(&self, ray: Ray, depth: usize) -> Vec3 {
+        let mut color = Vec3::zero();
+        let mut min_dist = f32::MAX;
+        for shape in &self.shapes {
+            if let Some(intersection) = shape.intersection(ray) {
+                if intersection.dist < min_dist {
+                    if depth == 0 {
+                        color = shape.material.color;
+                    } else {
+                        let reflected = Ray::new(
+                            intersection.point,
+                            Quaternion::rotation_3d(180f32.to_radians(), intersection.normal)
+                                * -ray.direction,
+                        );
+                        color = Lerp::lerp(
+                            shape.material.color,
+                            self.ray_color(reflected, depth - 1),
+                            shape.material.specularity,
+                        );
                     }
+                    min_dist = intersection.dist;
                 }
             }
         }
-        Image::new(buffer, width, heigth)
+        color
     }
 }

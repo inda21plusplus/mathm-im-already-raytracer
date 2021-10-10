@@ -1,13 +1,32 @@
-use crate::{Material, Ray, Vec3};
+use crate::{pixel, Material, Ray, Vec3};
 
-pub trait Shape {
-    fn material(&self) -> &Material;
-    fn intersection_dist(&self, ray: Ray) -> Option<f32>;
-    fn intersection_point(&self, ray: Ray) -> Option<Vec3> {
-        if let Some(dist) = self.intersection_dist(ray) {
-            Some(ray.origin + dist * ray.direction)
-        } else {
-            None
+pub struct Intersection {
+    pub dist: f32,
+    pub point: Vec3,
+    pub normal: Vec3,
+}
+
+pub struct Shape {
+    pub material: Material,
+    pub kind: ShapeKind,
+}
+
+pub enum ShapeKind {
+    Plane(Plane),
+    BoundedPlane(BoundedPlane),
+    Sphere(Sphere),
+}
+
+pub trait Intersect {
+    fn intersection(&self, ray: Ray) -> Option<Intersection>;
+}
+
+impl Intersect for Shape {
+    fn intersection(&self, ray: Ray) -> Option<Intersection> {
+        match &self.kind {
+            ShapeKind::Plane(p) => p.intersection(ray),
+            ShapeKind::BoundedPlane(p) => p.intersection(ray),
+            ShapeKind::Sphere(s) => s.intersection(ray),
         }
     }
 }
@@ -16,22 +35,51 @@ pub trait Shape {
 pub struct Plane {
     pub center: Vec3,
     pub normal: Vec3,
-    pub material: Material,
 }
 
-impl Shape for Plane {
-    fn material(&self) -> &Material {
-        &self.material
-    }
-    fn intersection_dist(&self, ray: Ray) -> Option<f32> {
-        let numerator = (self.center - ray.origin).dot(self.normal);
-        let denominator = ray.direction.dot(self.normal);
-
-        if denominator.abs() < 0.001 {
-            None
+impl Intersect for Plane {
+    fn intersection(&self, ray: Ray) -> Option<Intersection> {
+        let dist = (self.center - ray.origin).dot(self.normal) / ray.direction.dot(self.normal);
+        if 0. < dist && dist < 1_000_000. {
+            Some(Intersection {
+                dist,
+                point: ray.origin + ray.direction * dist,
+                normal: self.normal,
+            })
         } else {
-            let quotient = numerator / denominator;
-            Some(quotient)
+            None
+        }
+    }
+}
+
+pub struct BoundedPlane {
+    pub center: Vec3,
+    pub a: Vec3,
+    pub b: Vec3,
+}
+
+impl Intersect for BoundedPlane {
+    fn intersection(&self, ray: Ray) -> Option<Intersection> {
+        let normal = self.a.cross(self.b).normalized();
+        let dist = (self.center - ray.origin).dot(normal) / ray.direction.dot(normal);
+        let point = ray.origin + ray.direction * dist;
+        let a_hat = self.a.normalized();
+        let b_hat = self.b.normalized();
+        let center2point = point - self.center;
+        let c2p_proj_a_hat = center2point.dot(a_hat) * a_hat;
+        let c2p_proj_b_hat = center2point.dot(b_hat) * b_hat;
+        if 0. < dist
+            && dist < 1_000_000.
+            && c2p_proj_a_hat.magnitude_squared() <= self.a.magnitude_squared()
+            && c2p_proj_b_hat.magnitude_squared() <= self.b.magnitude_squared()
+        {
+            Some(Intersection {
+                dist,
+                point,
+                normal,
+            })
+        } else {
+            None
         }
     }
 }
@@ -39,21 +87,23 @@ impl Shape for Plane {
 pub struct Sphere {
     pub center: Vec3,
     pub radius: f32,
-    pub material: Material,
 }
 
-impl Shape for Sphere {
-    fn material(&self) -> &Material {
-        &self.material
-    }
-    fn intersection_dist(&self, ray: Ray) -> Option<f32> {
-        let a = ray.direction.dot(ray.direction - self.center).powi(2)
-            - (ray.direction - self.center).magnitude_squared()
+impl Intersect for Sphere {
+    fn intersection(&self, ray: Ray) -> Option<Intersection> {
+        let a = ray.direction.dot(ray.origin - self.center).powi(2)
+            - (ray.origin - self.center).magnitude_squared()
             + self.radius.powi(2);
-        if a < 0. {
-            None
+        let dist = -ray.direction.dot(ray.origin - self.center) - a.sqrt();
+        if dist >= 0. {
+            let point = ray.origin + dist * ray.direction;
+            Some(Intersection {
+                dist,
+                point,
+                normal: (point - self.center).normalized(),
+            })
         } else {
-            Some(-ray.direction.dot(ray.direction - self.center) - a.sqrt())
+            None
         }
     }
 }

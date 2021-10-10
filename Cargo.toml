@@ -8,3 +8,4 @@ edition = "2018"
 [dependencies]
 png = "0.17"
 vek = "0.15"
+rayon = "1.5"

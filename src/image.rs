@@ -1,11 +1,9 @@
-use std::io::Write;
-
-use crate::{Error, Vec3};
+use crate::Vec3;
 
 pub struct Image {
-    data: Vec<Vec3>,
-    width: usize,
-    heigth: usize,
+    pub data: Vec<Vec3>,
+    pub width: usize,
+    pub heigth: usize,
 }
 
 impl Image {
@@ -17,19 +15,12 @@ impl Image {
             heigth,
         }
     }
-    pub fn write(&self, w: impl Write) -> Result<(), Error> {
-        let mut encoder = png::Encoder::new(w, self.width as u32, self.heigth as u32);
-        encoder.set_color(png::ColorType::Rgb);
-        encoder.set_depth(png::BitDepth::Eight);
-        encoder.set_source_gamma(png::ScaledFloat::new(1. / 2.2));
-        let mut writer = encoder.write_header()?;
-        let mut s_writer = writer.stream_writer()?;
-        for v in self.data.iter() {
-            let r = (v.x * 255.).clamp(0., 255.) as u8;
-            let g = (v.y * 255.).clamp(0., 255.) as u8;
-            let b = (v.z * 255.).clamp(0., 255.) as u8;
-            s_writer.write(&[r, g, b])?;
-        }
-        Ok(())
+    pub fn get_raw_data(&self) -> Vec<u8> {
+        self.data
+            .iter()
+            .map(|color| color.map(|b| (b * 255.).clamp(0., 255.) as u8))
+            .map(|color| color.into_array())
+            .flatten()
+            .collect()
     }
 }
