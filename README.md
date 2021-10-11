@@ -20,14 +20,14 @@ The ball is now at the correct place! Also, planes can be bounded and reflection
 
 The right ball is supposed to be like glass, but the refractions are not working as intended. The reflections have some randomness based on the materials roughness.
 
-![](images/211011-0.png)
+![cool dark stuff](images/211011-0.png)
 
 Added lights. Colors are now gone.
 
-![](images/211011-1.png)
+![lights and color](images/211011-1.png)
 
 Okay now this is pretty cool.
 
-![](images/211011-1.png)
+![big shadow](images/211012-0.png)
 
 I fixed a bug with the shadows but why are they now so large?
