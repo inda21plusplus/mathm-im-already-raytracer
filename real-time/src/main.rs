@@ -2,7 +2,7 @@ use std::process::exit;
 
 use im_already_raytracer::camera::MappingFunction;
 use im_already_raytracer::shapes::Shape;
-use im_already_raytracer::{presets, render, Camera, Vec3};
+use im_already_raytracer::{presets, render, Camera, Light, Quaternion, Vec3};
 
 use bevy::input::mouse::{MouseMotion, MouseWheel};
 use bevy::prelude::*;
@@ -11,12 +11,13 @@ use bevy_pixels::prelude::*;
 struct Scaling(pub f32);
 
 fn main() {
-    let (camera, shapes) = presets::stick_in_water();
+    let (camera, shapes, lights) = presets::cornellbox();
     App::build()
         .add_plugins(DefaultPlugins)
         .add_plugin(PixelsPlugin)
         .insert_resource(camera)
         .insert_resource(shapes)
+        .insert_resource(lights)
         .insert_resource(Scaling(0.5))
         .add_system(render_s.system())
         .add_system(input_s.system())
@@ -27,6 +28,7 @@ fn render_s(
     mut pixels: ResMut<PixelsResource>,
     camera: Res<Camera>,
     shapes: Res<Vec<Shape>>,
+    lights: Res<Vec<Light>>,
     windows: Res<Windows>,
     scaling: Res<Scaling>,
 ) {
@@ -40,7 +42,7 @@ fn render_s(
     }
     let frame: &mut [u8] = pixels.pixels.get_frame();
     frame.copy_from_slice(
-        render(&camera, &shapes, tw as usize, th as usize)
+        render(&camera, &shapes, &lights, tw as usize, th as usize)
             .get_raw_data()
             .as_ref(),
     );
@@ -52,6 +54,8 @@ fn input_s(
     mut cursor: EventReader<MouseMotion>,
     mut scroll: EventReader<MouseWheel>,
     mut camera: ResMut<Camera>,
+    mut yaw: Local<f32>,
+    mut pitch: Local<f32>,
     mut windows: ResMut<Windows>,
     time: Res<Time>,
     mut lfov: Local<f32>,
@@ -62,7 +66,7 @@ fn input_s(
     if camera.is_added() {
         *lfov = (camera.fov + FRAC_PI_2).tan();
     }
-    if keyboard.pressed(KeyCode::Q) {
+    if keyboard.just_pressed(KeyCode::Q) {
         exit(0);
     }
     let locked = windows.get_primary().unwrap().cursor_locked();
@@ -81,12 +85,10 @@ fn input_s(
     let fov = |lfov: f32| lfov.atan() + FRAC_PI_2;
     if locked {
         for e in cursor.iter() {
-            camera
-                .orientation
-                .rotate_3d(e.delta.x * 0.002 * fov(*lfov), Vec3::unit_y());
-            camera
-                .orientation
-                .rotate_3d(e.delta.y * 0.002 * fov(*lfov), local_right);
+            *yaw += e.delta.x * 0.002 * fov(*lfov);
+            *pitch += e.delta.y * 0.002 * fov(*lfov);
+
+            camera.orientation = Quaternion::rotation_y(-*yaw) * Quaternion::rotation_x(-*pitch);
         }
     }
     let delta = time.delta_seconds() * 4.;
@@ -97,10 +99,10 @@ fn input_s(
         camera.position += local_right * delta;
     }
     if keyboard.pressed(KeyCode::Up) {
-        camera.position += local_forwards * delta;
+        camera.position -= local_forwards * delta;
     }
     if keyboard.pressed(KeyCode::Down) {
-        camera.position -= local_forwards * delta;
+        camera.position += local_forwards * delta;
     }
     for e in scroll.iter() {
         *lfov -= e.y / 10.;

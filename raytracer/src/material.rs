@@ -6,7 +6,7 @@ pub mod refractive_indices {
     pub const GLASS: f32 = 1.458;
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Material {
     pub color: Vec3,
     pub specularity: f32,

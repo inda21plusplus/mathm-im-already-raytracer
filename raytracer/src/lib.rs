@@ -8,6 +8,7 @@
 pub mod camera;
 pub mod error;
 pub mod image;
+pub mod lights;
 pub mod material;
 pub mod pixel;
 pub mod presets;
@@ -17,6 +18,7 @@ pub mod shapes;
 pub use camera::Camera;
 pub use error::Error;
 pub use image::Image;
+pub use lights::Light;
 pub use material::Material;
 pub use pixel::Pixel;
 pub use render::render;

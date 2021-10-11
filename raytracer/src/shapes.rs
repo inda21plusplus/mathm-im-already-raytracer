@@ -1,9 +1,6 @@
 use std::f32::consts::FRAC_PI_2;
 
-use crate::{
-    material::{self, refractive_indices},
-    Material, Quaternion, Ray, Vec3,
-};
+use crate::{material::refractive_indices, Material, Quaternion, Ray, Vec3};
 
 pub struct Intersection {
     pub ray: Ray,
@@ -14,15 +11,36 @@ pub struct Intersection {
 
 impl Intersection {
     pub fn reflection(&self, roughness: f32) -> Ray {
-        // Two vectors orthogonal to normal
-        let a =
-            (self.ray.direction - self.ray.direction.dot(self.normal) * self.normal).normalized();
+        let get_random = || {
+            use rand::prelude::*;
+            use rand_distr::Normal;
+            if roughness == 0. {
+                0.
+            } else {
+                rand::thread_rng()
+                    .sample::<f32, _>(Normal::new(0., roughness / 3.).unwrap())
+                    .clamp(-1., 1.)
+            }
+        };
+
+        // A vector that never points in the same or opposite direction as
+        // normal, so that it, projected on normal is not 0
+        let mut v = self.normal.cross(Vec3::new(1., 0., 0.));
+        if v.magnitude_squared() < 0.0001 {
+            v = self.normal.cross(Vec3::new(0., 1., 0.));
+        }
+        // Create two vectors orthogonal to normal
+        let a = (v - v.dot(self.normal) * self.normal).normalized();
         let b = self.normal.cross(a);
-        let a_rot = (rand::random::<f32>() * 2. - 1.) * FRAC_PI_2 * roughness;
-        let b_rot = (rand::random::<f32>() * 2. - 1.) * FRAC_PI_2 * roughness;
+        let a_rot = get_random() * FRAC_PI_2;
+        let b_rot = get_random() * FRAC_PI_2;
         let normal =
             Quaternion::rotation_3d(a_rot, a) * Quaternion::rotation_3d(b_rot, b) * self.normal;
-        assert!(self.normal.dot(normal) > 0.);
+        assert!(
+            self.normal.dot(normal) >= 0.,
+            "Randomization made normal flip direction, rotated by ({}, {}), orig normal: {}, new normal: {}, axises: {}, {}, v: {}",
+            a_rot, b_rot, self.normal, normal, a, b, v,
+        );
 
         Ray::new(
             self.point,
@@ -42,13 +60,13 @@ impl Intersection {
         let theta1 = self.ray.direction.angle_between(forwards);
         let theta2 = (refractive_index_change * theta1.sin()).asin();
 
-        // NOTE: the 'critical angle is ignored here'
+        // NOTE: the 'critical angle' is ignored here
 
         if theta2.is_nan() {
             // Total internal refraction
             Ray::new(
                 self.point,
-                Quaternion::rotation_3d(180f32.to_radians(), -self.normal) * -self.ray.direction,
+                Quaternion::rotation_3d(180f32.to_radians(), -forwards) * -self.ray.direction,
             )
         } else {
             Ray::new(self.point, Quaternion::rotation_3d(theta2, side) * forwards)
@@ -56,11 +74,13 @@ impl Intersection {
     }
 }
 
+#[derive(Debug, PartialEq)]
 pub struct Shape {
     pub material: Material,
     pub kind: ShapeKind,
 }
 
+#[derive(Debug, PartialEq)]
 pub enum ShapeKind {
     Plane(Plane),
     BoundedPlane(BoundedPlane),
@@ -86,6 +106,7 @@ impl Intersect for Shape {
 }
 
 /// An infinite plane
+#[derive(Debug, PartialEq)]
 pub struct Plane {
     pub center: Vec3,
     pub normal: Vec3,
@@ -110,6 +131,7 @@ impl Intersect for Plane {
     }
 }
 
+#[derive(Debug, PartialEq)]
 pub struct BoundedPlane {
     pub center: Vec3,
     pub a: Vec3,
@@ -133,12 +155,11 @@ impl Intersect for BoundedPlane {
         let a_hat = self.a.normalized();
         let b_hat = self.b.normalized();
         let center2point = point - self.center;
-        let c2p_proj_a_hat = center2point.dot(a_hat) * a_hat;
-        let c2p_proj_b_hat = center2point.dot(b_hat) * b_hat;
+        let c2p_proj_on_a_hat = center2point.dot(a_hat) * a_hat;
+        let c2p_proj_on_b_hat = center2point.dot(b_hat) * b_hat;
         if 0. < dist
-            && dist < 1_000_000.
-            && c2p_proj_a_hat.magnitude_squared() <= self.a.magnitude_squared()
-            && c2p_proj_b_hat.magnitude_squared() <= self.b.magnitude_squared()
+            && c2p_proj_on_a_hat.magnitude_squared() <= self.a.magnitude_squared()
+            && c2p_proj_on_b_hat.magnitude_squared() <= self.b.magnitude_squared()
         {
             Some(Intersection {
                 ray,
@@ -152,6 +173,7 @@ impl Intersect for BoundedPlane {
     }
 }
 
+#[derive(Debug, PartialEq)]
 pub struct Sphere {
     pub center: Vec3,
     pub radius: f32,
@@ -165,7 +187,7 @@ impl Intersect for Sphere {
         let dist = -ray.direction.dot(ray.origin - self.center) - a.sqrt();
         let point = ray.origin + dist * ray.direction;
         let normal = (point - self.center).normalized();
-        if dist >= 0. && !ignore_normal.contains(&normal) {
+        if dist >= 0. && !ignore_normal.map_or(false, |n| (n - normal).is_approx_zero()) {
             Some(Intersection {
                 ray,
                 dist,

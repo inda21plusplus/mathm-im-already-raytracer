@@ -19,12 +19,12 @@ impl MappingFunction {
             Self::Linear => Vec3 {
                 x: x01.lerp(-1., 1.) * (fov / 2.).tan() * aspect_ratio,
                 y: y01.lerp(-1., 1.) * (fov / 2.).tan(),
-                z: 1.,
+                z: -1.,
             },
             Self::Unlinear => Vec3 {
                 x: (x01.lerp(-1., 1.) * fov / 2.).tan() * aspect_ratio,
                 y: (y01.lerp(-1., 1.) * fov / 2.).tan(),
-                z: 1.,
+                z: -1.,
             },
             Self::Circular => {
                 let x = x01.lerp(-1., 1.) * aspect_ratio;
@@ -32,7 +32,7 @@ impl MappingFunction {
                 Vec3 {
                     x,
                     y,
-                    z: (1. - x * x - y * y).sqrt(),
+                    z: -(1. - x * x - y * y).sqrt(),
                 }
             }
         }
