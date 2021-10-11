@@ -1,4 +1,9 @@
-#![feature(write_all_vectored, stmt_expr_attributes, float_interpolation)]
+#![feature(
+    write_all_vectored,
+    stmt_expr_attributes,
+    float_interpolation,
+    option_result_contains
+)]
 
 pub mod camera;
 pub mod error;

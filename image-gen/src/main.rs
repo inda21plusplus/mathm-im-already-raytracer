@@ -33,13 +33,13 @@ impl From<IOError> for Error {
 }
 
 fn main() -> Result<(), Error> {
-    let (camera, shapes) = presets::cornellbox();
+    let (camera, shapes) = presets::stick_in_water();
 
     let width = 1000;
     let height = 1000;
     let mut data = vec![0u8; width * height * 4];
     let start = Instant::now();
-    let iterations = 10;
+    let iterations = 1;
     for i in 1..=iterations {
         print!(
             "\r                       \r[{} / {}] {}",

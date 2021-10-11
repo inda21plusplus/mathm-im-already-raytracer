@@ -11,7 +11,7 @@ use bevy_pixels::prelude::*;
 struct Scaling(pub f32);
 
 fn main() {
-    let (camera, shapes) = presets::cornellbox();
+    let (camera, shapes) = presets::stick_in_water();
     App::build()
         .add_plugins(DefaultPlugins)
         .add_plugin(PixelsPlugin)
@@ -89,7 +89,7 @@ fn input_s(
                 .rotate_3d(e.delta.y * 0.002 * fov(*lfov), local_right);
         }
     }
-    let delta = time.delta_seconds() * 2.;
+    let delta = time.delta_seconds() * 4.;
     if keyboard.pressed(KeyCode::Left) {
         camera.position -= local_right * delta;
     }

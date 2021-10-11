@@ -1,7 +1,12 @@
 use crate::Vec3;
 
-pub const AIR_REFRACTIVE_INDEX: f32 = 1.000293;
+pub mod refractive_indices {
+    pub const AIR: f32 = 1.000293;
+    pub const WATER: f32 = 1.333;
+    pub const GLASS: f32 = 1.458;
+}
 
+#[derive(Debug, Clone)]
 pub struct Material {
     pub color: Vec3,
     pub specularity: f32,
