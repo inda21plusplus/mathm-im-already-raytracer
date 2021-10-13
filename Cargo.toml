@@ -1,3 +1,6 @@
 [workspace]
 
 members = ["raytracer", "image-gen", "real-time"]
+
+[profile.release]
+lto = true

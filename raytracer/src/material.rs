@@ -16,21 +16,6 @@ pub struct Material {
 }
 
 impl Material {
-    pub fn new(
-        color: Vec3,
-        specularity: f32,
-        roughness: f32,
-        opacity: f32,
-        refractive_index: f32,
-    ) -> Self {
-        Self {
-            color,
-            specularity,
-            roughness,
-            opacity,
-            refractive_index,
-        }
-    }
     pub fn color(color: Vec3) -> Self {
         Self {
             color,

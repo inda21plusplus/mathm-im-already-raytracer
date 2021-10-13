@@ -104,8 +104,10 @@ fn ray_color(
         lambert += light.lambert(intersection.point, intersection.normal);
     }
 
+    let matt_color = mat.color * lambert;
+
     Lerp::lerp(
-        Lerp::lerp(refraction_color, mat.color * lambert, mat.opacity),
+        Lerp::lerp(refraction_color, matt_color, mat.opacity),
         reflection_color,
         if ray.direction.dot(intersection.normal) < 0. {
             mat.specularity

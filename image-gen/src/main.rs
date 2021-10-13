@@ -33,7 +33,7 @@ impl From<IOError> for Error {
 }
 
 fn main() -> Result<(), Error> {
-    let (camera, shapes, lights) = presets::cornellbox();
+    let (camera, shapes, lights) = presets::light_and_box();
 
     let width = 1000;
     let height = 1000;

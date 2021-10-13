@@ -23,10 +23,10 @@ pub use material::Material;
 pub use pixel::Pixel;
 pub use render::render;
 
-pub type Vec3 = vek::Vec3<f32>;
-pub type Vec4 = vek::Vec4<f32>;
-pub type Transform = vek::Transform<f32, f32, f32>;
-pub type Ray = vek::Ray<f32>;
-pub type Quaternion = vek::Quaternion<f32>;
-pub type Mat3 = vek::Mat3<f32>;
-pub type Mat4 = vek::Mat4<f32>;
+pub type Vec3 = vek::vec::repr_simd::Vec3<f32>;
+pub type Vec4 = vek::vec::repr_simd::Vec4<f32>;
+pub type Transform = vek::transform::repr_simd::Transform<f32, f32, f32>;
+pub type Ray = vek::geom::repr_simd::Ray<f32>;
+pub type Quaternion = vek::quaternion::repr_simd::Quaternion<f32>;
+pub type Mat3 = vek::mat::repr_simd::column_major::Mat3<f32>;
+pub type Mat4 = vek::mat::repr_simd::column_major::Mat4<f32>;
