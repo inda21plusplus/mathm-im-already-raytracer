@@ -1,0 +1,63 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'im-already-raytracer'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=im-already-raytracer"
+                ],
+                "filter": {
+                    "name": "im-already-raytracer",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'image-gen'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=image-gen",
+                    "--package=image-gen"
+                ],
+                "filter": {
+                    "name": "image-gen",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'real-time'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=real-time",
+                    "--package=real-time"
+                ],
+                "filter": {
+                    "name": "real-time",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+    ]
+}

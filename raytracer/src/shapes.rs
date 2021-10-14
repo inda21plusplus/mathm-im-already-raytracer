@@ -1,7 +1,8 @@
 use std::f32::consts::FRAC_PI_2;
 
-use crate::{material::refractive_indices, Material, Quaternion, Ray, Vec3};
+use crate::{material::refractive_indices, orthogonal, Material, Quaternion, Ray, Vec3};
 
+#[derive(Debug)]
 pub struct Intersection {
     pub ray: Ray,
     pub dist: f32,
@@ -23,23 +24,15 @@ impl Intersection {
             }
         };
 
-        // A vector that never points in the same or opposite direction as
-        // normal, so that it, projected on normal is not 0
-        let mut v = self.normal.cross(Vec3::new(1., 0., 0.));
-        if v.magnitude_squared() < 0.0001 {
-            v = self.normal.cross(Vec3::new(0., 1., 0.));
-        }
-        // Create two vectors orthogonal to normal
-        let a = (v - v.dot(self.normal) * self.normal).normalized();
-        let b = self.normal.cross(a);
+        let (a, b) = orthogonal(self.normal);
         let a_rot = get_random() * FRAC_PI_2;
         let b_rot = get_random() * FRAC_PI_2;
         let normal =
             Quaternion::rotation_3d(a_rot, a) * Quaternion::rotation_3d(b_rot, b) * self.normal;
         assert!(
             self.normal.dot(normal) >= 0.,
-            "Randomization made normal flip direction, rotated by ({}, {}), orig normal: {}, new normal: {}, axises: {}, {}, v: {}",
-            a_rot, b_rot, self.normal, normal, a, b, v,
+            "Randomization made normal flip direction, rotated by ({}, {}), orig normal: {}, new normal: {}, axises: {}, {}",
+            a_rot, b_rot, self.normal, normal, a, b,
         );
 
         Ray::new(
@@ -97,7 +90,13 @@ pub trait Intersect {
 
 impl Intersect for Shape {
     fn intersection(&self, ray: Ray, ignore_normal: Option<Vec3>) -> Option<Intersection> {
-        match &self.kind {
+        self.kind.intersection(ray, ignore_normal)
+    }
+}
+
+impl Intersect for ShapeKind {
+    fn intersection(&self, ray: Ray, ignore_normal: Option<Vec3>) -> Option<Intersection> {
+        match self {
             ShapeKind::Plane(p) => p.intersection(ray, ignore_normal),
             ShapeKind::BoundedPlane(p) => p.intersection(ray, ignore_normal),
             ShapeKind::Sphere(s) => s.intersection(ray, ignore_normal),
@@ -173,7 +172,7 @@ impl Intersect for BoundedPlane {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub struct Sphere {
     pub center: Vec3,
     pub radius: f32,

@@ -42,7 +42,7 @@ fn render_s(
     }
     let frame: &mut [u8] = pixels.pixels.get_frame();
     frame.copy_from_slice(
-        render(&camera, &shapes, &lights, tw as usize, th as usize)
+        render(&camera, &shapes, &lights, tw as usize, th as usize, 1)
             .get_raw_data()
             .as_ref(),
     );

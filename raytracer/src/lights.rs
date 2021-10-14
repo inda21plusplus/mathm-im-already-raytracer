@@ -1,4 +1,10 @@
-use crate::{shapes::Sphere, Ray, Vec3};
+use std::f32::consts::PI;
+
+use crate::{
+    orthogonal,
+    shapes::{Intersect, Intersection, Sphere},
+    Ray, Vec3,
+};
 
 // Point light
 pub struct Light {
@@ -7,13 +13,23 @@ pub struct Light {
 }
 
 impl Light {
-    pub fn ray_to(&self, to: Vec3) -> Option<Ray> {
+    pub fn rays_to(&self, to: Vec3) -> Vec<Ray> {
+        let mut rays = vec![];
         match &self.kind {
             LightKind::Point(sphere) => {
-                Some(Ray::new(sphere.center, (to - sphere.center).normalized()))
+                let dir_from_center = (to - sphere.center).normalized();
+                let res = 4;
+                for x in (-res..res).map(|r| r as f32 / res as f32 * sphere.radius) {
+                    for y in (-res..res).map(|a| a as f32 / res as f32 * sphere.radius) {
+                        let (a, b) = orthogonal(dir_from_center);
+                        let origin = sphere.center + x * a + y * b;
+                        rays.push(Ray::new(origin, (to - origin).normalized()));
+                    }
+                }
             }
-            LightKind::Ambient => None,
+            LightKind::Ambient => {}
         }
+        rays
     }
     pub fn lambert(&self, point: Vec3, normal: Vec3) -> f32 {
         match &self.kind {
@@ -22,6 +38,23 @@ impl Light {
                 (self.intensity * normal.dot(point2light) / point2light.magnitude_squared()).max(0.)
             }
             LightKind::Ambient => self.intensity,
+        }
+    }
+    // NOTE: if any other types of shapes are added to lights, refactor this,
+    // don't add more stuff like `get_plane` or whatever.
+    pub fn get_sphere(&self) -> Option<&Sphere> {
+        match &self.kind {
+            LightKind::Point(sphere) => Some(sphere),
+            _ => None,
+        }
+    }
+}
+
+impl Intersect for Light {
+    fn intersection(&self, ray: Ray, ignore_normal: Option<Vec3>) -> Option<Intersection> {
+        match self.kind {
+            LightKind::Point(sphere) => sphere.intersection(ray, ignore_normal),
+            LightKind::Ambient => None,
         }
     }
 }

@@ -11,11 +11,10 @@ pub fn cornellbox() -> (Camera, Vec<Shape>, Vec<Light>) {
     // ground
     shapes.push(Shape {
         material: {
-            let color = Vec3::new(1., 1., 1.);
             Material {
-                color,
+                color: Vec3::new(1., 1., 1.),
                 specularity: 0.4,
-                roughness: 0.4,
+                roughness: 0.2,
                 opacity: 1.,
                 refractive_index: 1.,
             }
@@ -28,11 +27,10 @@ pub fn cornellbox() -> (Camera, Vec<Shape>, Vec<Light>) {
     // red
     shapes.push(Shape {
         material: {
-            let color = Vec3::new(1., 0., 0.);
             Material {
-                color,
+                color: Vec3::new(1., 0., 0.),
                 specularity: 0.4,
-                roughness: 0.4,
+                roughness: 0.2,
                 opacity: 1.,
                 refractive_index: 1.,
             }
@@ -46,11 +44,10 @@ pub fn cornellbox() -> (Camera, Vec<Shape>, Vec<Light>) {
     // green
     shapes.push(Shape {
         material: {
-            let color = Vec3::new(0., 1., 0.);
             Material {
-                color,
+                color: Vec3::new(0., 1., 0.),
                 specularity: 0.4,
-                roughness: 0.4,
+                roughness: 0.2,
                 opacity: 1.,
                 refractive_index: 1.,
             }
@@ -64,11 +61,10 @@ pub fn cornellbox() -> (Camera, Vec<Shape>, Vec<Light>) {
     // back
     shapes.push(Shape {
         material: {
-            let color = Vec3::new(1., 1., 0.8);
             Material {
-                color,
+                color: Vec3::new(1., 1., 0.8),
                 specularity: 0.4,
-                roughness: 0.4,
+                roughness: 0.2,
                 opacity: 1.,
                 refractive_index: 1.,
             }
@@ -82,11 +78,10 @@ pub fn cornellbox() -> (Camera, Vec<Shape>, Vec<Light>) {
     // roof
     shapes.push(Shape {
         material: {
-            let color = Vec3::new(1., 1., 1.);
             Material {
-                color,
-                specularity: 0.4,
-                roughness: 0.4,
+                color: Vec3::new(1., 1., 1.),
+                specularity: 0.3,
+                roughness: 0.5,
                 opacity: 1.,
                 refractive_index: 1.,
             }
@@ -100,9 +95,8 @@ pub fn cornellbox() -> (Camera, Vec<Shape>, Vec<Light>) {
     // blue ball
     shapes.push(Shape {
         material: {
-            let color = Vec3::new(0., 0., 1.);
             Material {
-                color,
+                color: Vec3::new(0., 0., 1.),
                 specularity: 0.5,
                 roughness: 0.04,
                 opacity: 1.,
@@ -117,14 +111,12 @@ pub fn cornellbox() -> (Camera, Vec<Shape>, Vec<Light>) {
     // glass ball
     shapes.push(Shape {
         material: {
-            let color = Vec3::new(1., 1., 0.);
-            let refractive_index = refractive_indices::AIR + 1.9;
             Material {
-                color,
+                color: Vec3::new(1., 1., 0.),
                 specularity: 0.1,
                 roughness: 0.,
                 opacity: 0.5,
-                refractive_index,
+                refractive_index: refractive_indices::AIR + 1.9,
             }
         },
         kind: ShapeKind::Sphere(Sphere {
@@ -143,8 +135,8 @@ pub fn cornellbox() -> (Camera, Vec<Shape>, Vec<Light>) {
         vec![Light {
             intensity: 7.,
             kind: LightKind::Point(Sphere {
-                center: Vec3::new(0., 4., 0.),
-                radius: 0.,
+                center: Vec3::new(0., 4.5, 0.),
+                radius: 0.5,
             }),
         }],
     )
@@ -156,14 +148,12 @@ pub fn stick_in_water() -> (Camera, Vec<Shape>, Vec<Light>) {
     // water
     shapes.push(Shape {
         material: {
-            let color = Vec3::new(0., 0.16, 0.23);
-            let refractive_index = refractive_indices::WATER;
             Material {
-                color,
+                color: Vec3::new(0., 0.16, 0.23),
                 specularity: 0.2,
                 roughness: 0.05,
                 opacity: 0.3,
-                refractive_index,
+                refractive_index: refractive_indices::WATER,
             }
         },
         kind: ShapeKind::Plane(Plane {
@@ -227,19 +217,13 @@ pub fn light_and_box() -> (Camera, Vec<Shape>, Vec<Light>) {
             mapping_function: MappingFunction::Linear,
         },
         shapes,
-        vec![
-            Light {
-                intensity: 3.,
-                kind: LightKind::Point(Sphere {
-                    center: Vec3::new(0., 5., -5.),
-                    radius: 1.,
-                }),
-            },
-            Light {
-                intensity: 0.2,
-                kind: LightKind::Ambient,
-            },
-        ],
+        vec![Light {
+            intensity: 3.,
+            kind: LightKind::Point(Sphere {
+                center: Vec3::new(0., 5., -5.),
+                radius: 1.,
+            }),
+        }],
     )
 }
 

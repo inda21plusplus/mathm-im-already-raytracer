@@ -1,5 +1,6 @@
 use std::f32;
 
+use itertools::Itertools;
 use rayon::prelude::*;
 use vek::Lerp;
 
@@ -14,32 +15,57 @@ pub fn render(
     lights: &[Light],
     width: usize,
     height: usize,
+    multisampling: usize,
 ) -> Image {
-    let mut buffer = vec![Vec3::zero(); width * height];
+    let upsampled_width = width * multisampling;
+    let upsampled_height = height * multisampling;
+    let mut buffer = vec![Vec3::zero(); upsampled_width * upsampled_height];
     camera
-        .rays(width, height)
+        .rays(upsampled_width, upsampled_height)
         .collect::<Vec<(Ray, usize, usize)>>()
         .par_iter()
         .map(|&(ray, _, _)| ray_color(ray, shapes, lights, 10, None))
         .collect_into_vec(&mut buffer);
+    let buffer = downsample(&buffer, multisampling, width, height);
     Image::new(buffer, width, height)
 }
 
-fn ray_intersection(
+fn downsample(buffer: &[Vec3], multisampling: usize, width: usize, height: usize) -> Vec<Vec3> {
+    let original_width = multisampling * width;
+
+    (0..height)
+        .cartesian_product(0..width)
+        .map(|(row, col)| {
+            let mut color = Vec3::zero();
+            for r in 0..multisampling {
+                for c in 0..multisampling {
+                    let i = (row * multisampling + r) * original_width + col * multisampling + c;
+                    color += buffer[i];
+                }
+            }
+            color / (multisampling * multisampling) as f32
+        })
+        .collect()
+}
+
+fn ray_intersection<'s, Intersectable>(
     ray: Ray,
-    shapes: &[Shape],
+    intersectables: impl Iterator<Item = &'s Intersectable>,
     ignore_normal: Option<Vec3>,
-) -> Option<(&Shape, Intersection)> {
+) -> Option<(&'s Intersectable, Intersection)>
+where
+    Intersectable: Intersect,
+{
     let mut min_dist = f32::MAX;
-    let mut closest: Option<(&Shape, Intersection)> = None;
-    for shape in shapes {
-        let intersection = match shape.intersection(ray, ignore_normal) {
+    let mut closest: Option<(&Intersectable, Intersection)> = None;
+    for intersectable in intersectables {
+        let intersection = match intersectable.intersection(ray, ignore_normal) {
             Some(i) if i.dist < min_dist => i,
             _ => continue,
         };
 
         min_dist = intersection.dist;
-        closest = Some((shape, intersection));
+        closest = Some((intersectable, intersection));
     }
 
     return closest;
@@ -56,10 +82,18 @@ fn ray_color(
         return Vec3::zero(); // todo: something better
     }
 
-    let (shape, intersection) = match ray_intersection(ray, shapes, ignore_normal) {
-        Some(si) => si,
+    let (shape, intersection) = match ray_intersection(ray, shapes.iter(), ignore_normal) {
+        Some(shape_intersection) => shape_intersection,
         None => return Vec3::zero(), // todo: skybox
     };
+
+    if let Some((light, light_intersection)) = ray_intersection(ray, lights.iter(), None) {
+        // TODO: what if theyre equal? maybe check normal?
+        if light_intersection.dist < intersection.dist {
+            return Vec3::broadcast(light.intensity);
+        }
+    };
+
     let mat = &shape.material;
 
     let reflection_color = if mat.specularity > 0. {
@@ -87,8 +121,11 @@ fn ray_color(
 
     let mut lambert = 0.;
     for light in lights {
-        if let Some(r) = light.ray_to(intersection.point) {
-            if let Some((s, _)) = ray_intersection(r, shapes, None) {
+        let rays = light.rays_to(intersection.point);
+        let ray_count = rays.len();
+        let mut hits = 0;
+        for r in rays {
+            if let Some((s, _)) = ray_intersection(r, shapes.iter(), None) {
                 // todo: maybe it would be nice to compare the pointers here instead.
                 if *s != *shape {
                     continue;
@@ -100,8 +137,14 @@ fn ray_color(
                 // The light is on the other side of the object
                 continue;
             }
+            hits += 1;
         }
-        lambert += light.lambert(intersection.point, intersection.normal);
+        let hit_factor = if ray_count > 0 {
+            hits as f32 / ray_count as f32
+        } else {
+            1.
+        };
+        lambert += light.lambert(intersection.point, intersection.normal) * hit_factor;
     }
 
     let matt_color = mat.color * lambert;

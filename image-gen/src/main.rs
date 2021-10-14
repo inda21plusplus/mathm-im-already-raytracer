@@ -33,13 +33,13 @@ impl From<IOError> for Error {
 }
 
 fn main() -> Result<(), Error> {
-    let (camera, shapes, lights) = presets::light_and_box();
+    let (camera, shapes, lights) = presets::cornellbox();
 
     let width = 1000;
     let height = 1000;
     let mut data = vec![0u8; width * height * 4];
     let start = Instant::now();
-    let iterations = 100;
+    let iterations = 20;
     for i in 1..=iterations {
         print!(
             "\r                       \r[{} / {}] {}",
@@ -49,7 +49,7 @@ fn main() -> Result<(), Error> {
         );
         stdout().lock().flush()?;
 
-        let image = render(&camera, &shapes, &lights, width, height);
+        let image = render(&camera, &shapes, &lights, width, height, 2);
         for (b, n) in data.iter_mut().zip(image.get_raw_data()) {
             let f_o = (i as f32 - 1.) / i as f32;
             let f_n = 1. / i as f32;
