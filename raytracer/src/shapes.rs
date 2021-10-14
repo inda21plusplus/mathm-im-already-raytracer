@@ -11,11 +11,11 @@ pub struct Intersection {
 }
 
 impl Intersection {
-    pub fn reflection(&self, roughness: f32) -> Ray {
+    pub fn reflection(&self, roughness: f32, use_randomness: bool) -> Ray {
         let get_random = || {
             use rand::prelude::*;
             use rand_distr::Normal;
-            if roughness == 0. {
+            if roughness == 0. || !use_randomness {
                 0.
             } else {
                 rand::thread_rng()

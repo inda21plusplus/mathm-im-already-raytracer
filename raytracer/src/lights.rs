@@ -1,5 +1,3 @@
-use std::f32::consts::PI;
-
 use crate::{
     orthogonal,
     shapes::{Intersect, Intersection, Sphere},
@@ -13,14 +11,14 @@ pub struct Light {
 }
 
 impl Light {
-    pub fn rays_to(&self, to: Vec3) -> Vec<Ray> {
+    pub fn rays_to(&self, to: Vec3, soft_shadow_resolution: usize) -> Vec<Ray> {
+        let res = soft_shadow_resolution as isize;
         let mut rays = vec![];
         match &self.kind {
             LightKind::Point(sphere) => {
                 let dir_from_center = (to - sphere.center).normalized();
-                let res = 4;
-                for x in (-res..res).map(|r| r as f32 / res as f32 * sphere.radius) {
-                    for y in (-res..res).map(|a| a as f32 / res as f32 * sphere.radius) {
+                for x in (-res..=res).map(|x| x as f32 / res as f32 * sphere.radius) {
+                    for y in (-res..=res).map(|y| y as f32 / res as f32 * sphere.radius) {
                         let (a, b) = orthogonal(dir_from_center);
                         let origin = sphere.center + x * a + y * b;
                         rays.push(Ray::new(origin, (to - origin).normalized()));

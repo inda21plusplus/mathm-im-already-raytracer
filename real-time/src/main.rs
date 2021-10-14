@@ -1,14 +1,13 @@
 use std::process::exit;
 
 use im_already_raytracer::camera::MappingFunction;
+use im_already_raytracer::render::RenderOptions;
 use im_already_raytracer::shapes::Shape;
 use im_already_raytracer::{presets, render, Camera, Light, Quaternion, Vec3};
 
 use bevy::input::mouse::{MouseMotion, MouseWheel};
 use bevy::prelude::*;
 use bevy_pixels::prelude::*;
-
-struct Scaling(pub f32);
 
 fn main() {
     let (camera, shapes, lights) = presets::cornellbox();
@@ -18,7 +17,14 @@ fn main() {
         .insert_resource(camera)
         .insert_resource(shapes)
         .insert_resource(lights)
-        .insert_resource(Scaling(0.5))
+        .insert_resource(RenderOptions {
+            width: 1280,
+            height: 720,
+            multisampling: 1,
+            soft_shadow_resolution: 1,
+            max_ray_depth: 1,
+            use_randomness: false,
+        })
         .add_system(render_s.system())
         .add_system(input_s.system())
         .run();
@@ -29,20 +35,18 @@ fn render_s(
     camera: Res<Camera>,
     shapes: Res<Vec<Shape>>,
     lights: Res<Vec<Light>>,
-    windows: Res<Windows>,
-    scaling: Res<Scaling>,
+    render_options: Res<RenderOptions>,
 ) {
-    let w = windows.get(pixels.window_id).unwrap();
-    let tw = (w.width() * scaling.0) as u32;
-    let th = (w.height() * scaling.0) as u32;
     let pw = pixels.pixels.context().texture_extent.width as u32;
     let ph = pixels.pixels.context().texture_extent.height as u32;
-    if tw != pw || th != ph {
-        pixels.pixels.resize_buffer(tw, th);
+    if render_options.width as u32 != pw || render_options.height as u32 != ph {
+        pixels
+            .pixels
+            .resize_buffer(render_options.width as u32, render_options.height as u32);
     }
     let frame: &mut [u8] = pixels.pixels.get_frame();
     frame.copy_from_slice(
-        render(&camera, &shapes, &lights, tw as usize, th as usize, 1)
+        render(&render_options, &camera, &shapes, &lights)
             .get_raw_data()
             .as_ref(),
     );
@@ -59,15 +63,16 @@ fn input_s(
     mut windows: ResMut<Windows>,
     time: Res<Time>,
     mut lfov: Local<f32>,
-    mut scaling: ResMut<Scaling>,
+    mut render_options: ResMut<RenderOptions>,
 ) {
     use std::f32::consts::FRAC_PI_2;
 
+    if keyboard.just_pressed(KeyCode::Escape) {
+        exit(0);
+    }
+
     if camera.is_added() {
         *lfov = (camera.fov + FRAC_PI_2).tan();
-    }
-    if keyboard.just_pressed(KeyCode::Q) {
-        exit(0);
     }
     let locked = windows.get_primary().unwrap().cursor_locked();
     if keyboard.just_pressed(KeyCode::Escape) || mouse.just_pressed(MouseButton::Left) {
@@ -91,30 +96,43 @@ fn input_s(
             camera.orientation = Quaternion::rotation_y(-*yaw) * Quaternion::rotation_x(-*pitch);
         }
     }
-    let delta = time.delta_seconds() * 4.;
-    if keyboard.pressed(KeyCode::Left) {
-        camera.position -= local_right * delta;
+    let move_speed = time.delta_seconds() * 4.;
+    if keyboard.pressed(KeyCode::A) {
+        camera.position -= local_right * move_speed;
     }
-    if keyboard.pressed(KeyCode::Right) {
-        camera.position += local_right * delta;
+    if keyboard.pressed(KeyCode::D) {
+        camera.position += local_right * move_speed;
     }
-    if keyboard.pressed(KeyCode::Up) {
-        camera.position -= local_forwards * delta;
+    if keyboard.pressed(KeyCode::W) {
+        camera.position -= local_forwards * move_speed;
     }
-    if keyboard.pressed(KeyCode::Down) {
-        camera.position += local_forwards * delta;
+    if keyboard.pressed(KeyCode::S) {
+        camera.position += local_forwards * move_speed;
+    }
+    if keyboard.pressed(KeyCode::Q) {
+        camera.position -= Vec3::unit_y() * move_speed;
+    }
+    if keyboard.pressed(KeyCode::E) {
+        camera.position += Vec3::unit_y() * move_speed;
     }
     for e in scroll.iter() {
         *lfov -= e.y / 10.;
         camera.fov = fov(*lfov);
     }
-    if keyboard.pressed(KeyCode::M) {
-        scaling.0 *= 2f32.powf(time.delta_seconds());
+    if keyboard.pressed(KeyCode::Left) {
+        render_options.width -= (100. * time.delta_seconds()) as usize;
     }
-    if keyboard.pressed(KeyCode::W) {
-        scaling.0 /= 2f32.powf(time.delta_seconds());
+    if keyboard.pressed(KeyCode::Right) {
+        render_options.width += (100. * time.delta_seconds()) as usize;
     }
-    scaling.0 = scaling.0.clamp(0.01, 1.);
+    render_options.width = render_options.width.max(0).min(2000);
+    if keyboard.pressed(KeyCode::Up) {
+        render_options.height -= (100. * time.delta_seconds()) as usize;
+    }
+    if keyboard.pressed(KeyCode::Down) {
+        render_options.height += (100. * time.delta_seconds()) as usize;
+    }
+    render_options.height = render_options.height.max(0).min(2000);
     if keyboard.pressed(KeyCode::Key1) {
         camera.mapping_function = MappingFunction::Linear;
     }
@@ -124,7 +142,25 @@ fn input_s(
     if keyboard.pressed(KeyCode::Key3) {
         camera.mapping_function = MappingFunction::Circular;
     }
-    if keyboard.just_pressed(KeyCode::Key1) || keyboard.just_pressed(KeyCode::Key2) {
-        // println!("{}", world.camera.projection.to_string());
+    if keyboard.just_pressed(KeyCode::Minus) && render_options.multisampling > 1 {
+        render_options.multisampling /= 2;
+    }
+    if keyboard.just_pressed(KeyCode::Equals) {
+        render_options.multisampling *= 2;
+    }
+    if keyboard.just_pressed(KeyCode::LBracket) && render_options.soft_shadow_resolution > 0 {
+        render_options.soft_shadow_resolution -= 1;
+    }
+    if keyboard.just_pressed(KeyCode::RBracket) {
+        render_options.soft_shadow_resolution += 1;
+    }
+    if keyboard.just_pressed(KeyCode::Semicolon) && render_options.max_ray_depth > 0 {
+        render_options.max_ray_depth -= 1;
+    }
+    if keyboard.just_pressed(KeyCode::Apostrophe) {
+        render_options.max_ray_depth += 1;
+    }
+    if keyboard.just_pressed(KeyCode::R) {
+        render_options.use_randomness = !render_options.use_randomness;
     }
 }

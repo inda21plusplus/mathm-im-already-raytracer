@@ -31,3 +31,11 @@ Okay now this is pretty cool.
 ![big shadow](images/211012-0.png)
 
 I fixed a bug with the shadows but why are they now so large?
+
+![msaa](images/211014-0.png)
+
+Multisampling 8)
+
+![Soft Shadows](images/211014-1.png)
+
+Soft shadows

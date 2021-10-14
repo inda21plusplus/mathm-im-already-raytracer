@@ -9,41 +9,63 @@ use crate::{
     Camera, Image, Light, Ray, Vec3,
 };
 
+pub struct RenderOptions {
+    pub multisampling: usize,
+    pub width: usize,
+    pub height: usize,
+    pub max_ray_depth: usize,
+    pub soft_shadow_resolution: usize,
+    pub use_randomness: bool,
+}
+
+impl Default for RenderOptions {
+    fn default() -> Self {
+        Self {
+            multisampling: 1,
+            width: 640,
+            height: 640,
+            max_ray_depth: 5,
+            soft_shadow_resolution: 4,
+            use_randomness: true,
+        }
+    }
+}
+
 pub fn render(
+    options: &RenderOptions,
     camera: &Camera,
     shapes: &[Shape],
     lights: &[Light],
-    width: usize,
-    height: usize,
-    multisampling: usize,
 ) -> Image {
-    let upsampled_width = width * multisampling;
-    let upsampled_height = height * multisampling;
+    let upsampled_width = options.width * options.multisampling;
+    let upsampled_height = options.height * options.multisampling;
     let mut buffer = vec![Vec3::zero(); upsampled_width * upsampled_height];
     camera
         .rays(upsampled_width, upsampled_height)
         .collect::<Vec<(Ray, usize, usize)>>()
         .par_iter()
-        .map(|&(ray, _, _)| ray_color(ray, shapes, lights, 10, None))
+        .map(|&(ray, _, _)| ray_color(options, ray, shapes, lights, 0, None))
         .collect_into_vec(&mut buffer);
-    let buffer = downsample(&buffer, multisampling, width, height);
-    Image::new(buffer, width, height)
+    let buffer = downsample(options, &buffer);
+    Image::new(buffer, options.width, options.height)
 }
 
-fn downsample(buffer: &[Vec3], multisampling: usize, width: usize, height: usize) -> Vec<Vec3> {
-    let original_width = multisampling * width;
+fn downsample(options: &RenderOptions, buffer: &[Vec3]) -> Vec<Vec3> {
+    let original_width = options.multisampling * options.width;
 
-    (0..height)
-        .cartesian_product(0..width)
+    (0..options.height)
+        .cartesian_product(0..options.width)
         .map(|(row, col)| {
             let mut color = Vec3::zero();
-            for r in 0..multisampling {
-                for c in 0..multisampling {
-                    let i = (row * multisampling + r) * original_width + col * multisampling + c;
+            for r in 0..options.multisampling {
+                for c in 0..options.multisampling {
+                    let i = (row * options.multisampling + r) * original_width
+                        + col * options.multisampling
+                        + c;
                     color += buffer[i];
                 }
             }
-            color / (multisampling * multisampling) as f32
+            color / (options.multisampling * options.multisampling) as f32
         })
         .collect()
 }
@@ -72,13 +94,14 @@ where
 }
 
 fn ray_color(
+    options: &RenderOptions,
     ray: Ray,
     shapes: &[Shape],
     lights: &[Light],
     depth: usize,
     ignore_normal: Option<Vec3>,
 ) -> Vec3 {
-    if depth == 0 {
+    if depth == options.max_ray_depth {
         return Vec3::zero(); // todo: something better
     }
 
@@ -98,10 +121,11 @@ fn ray_color(
 
     let reflection_color = if mat.specularity > 0. {
         ray_color(
-            intersection.reflection(mat.roughness),
+            options,
+            intersection.reflection(mat.roughness, options.use_randomness),
             shapes,
             lights,
-            depth - 1,
+            depth + 1,
             Some(intersection.normal),
         )
     } else {
@@ -109,10 +133,11 @@ fn ray_color(
     };
     let refraction_color = if mat.opacity < 1. {
         ray_color(
+            options,
             intersection.refraction(mat.refractive_index),
             shapes,
             lights,
-            depth - 1,
+            depth + 1,
             Some(intersection.normal),
         )
     } else {
@@ -121,7 +146,7 @@ fn ray_color(
 
     let mut lambert = 0.;
     for light in lights {
-        let rays = light.rays_to(intersection.point);
+        let rays = light.rays_to(intersection.point, options.soft_shadow_resolution);
         let ray_count = rays.len();
         let mut hits = 0;
         for r in rays {

@@ -4,7 +4,11 @@ use std::{
     time::Instant,
 };
 
-use im_already_raytracer::{presets, render, Error as IARTError};
+use im_already_raytracer::{
+    presets,
+    render::{render, RenderOptions},
+    Error as IARTError,
+};
 use png::EncodingError;
 
 #[derive(Debug)]
@@ -35,9 +39,14 @@ impl From<IOError> for Error {
 fn main() -> Result<(), Error> {
     let (camera, shapes, lights) = presets::cornellbox();
 
-    let width = 1000;
-    let height = 1000;
-    let mut data = vec![0u8; width * height * 4];
+    let options = RenderOptions {
+        width: 1000,
+        height: 1000,
+        multisampling: 4,
+        soft_shadow_resolution: 4,
+        ..Default::default()
+    };
+    let mut data = vec![0u8; options.width * options.height * 4];
     let start = Instant::now();
     let iterations = 20;
     for i in 1..=iterations {
@@ -49,7 +58,7 @@ fn main() -> Result<(), Error> {
         );
         stdout().lock().flush()?;
 
-        let image = render(&camera, &shapes, &lights, width, height, 2);
+        let image = render(&options, &camera, &shapes, &lights);
         for (b, n) in data.iter_mut().zip(image.get_raw_data()) {
             let f_o = (i as f32 - 1.) / i as f32;
             let f_n = 1. / i as f32;
@@ -57,7 +66,7 @@ fn main() -> Result<(), Error> {
         }
 
         let file = File::create("output.png").unwrap();
-        let mut encoder = png::Encoder::new(file, width as u32, height as u32);
+        let mut encoder = png::Encoder::new(file, options.width as u32, options.height as u32);
         encoder.set_color(png::ColorType::Rgba);
         encoder.set_depth(png::BitDepth::Eight);
         encoder.write_header()?.write_image_data(&data)?;
