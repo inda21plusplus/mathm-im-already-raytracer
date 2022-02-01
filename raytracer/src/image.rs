@@ -16,12 +16,13 @@ impl Image {
         }
     }
     pub fn get_raw_data(&self) -> Vec<u8> {
-        self.data
-            .iter()
-            .map(|color| color.map(|b| (b * 255.).clamp(0., 255.) as u8))
-            .map(|color| vek::Vec4::<u8>::new(color.x, color.y, color.z, 255))
-            .map(|color| color.into_array())
-            .flatten()
-            .collect()
+        let mut output = vec![0; self.width * self.height * 4];
+        for (i, pixel) in self.data.iter().enumerate() {
+            output[i * 4 + 0] = (pixel.x * 255.).clamp(0., 255.) as u8;
+            output[i * 4 + 1] = (pixel.y * 255.).clamp(0., 255.) as u8;
+            output[i * 4 + 2] = (pixel.z * 255.).clamp(0., 255.) as u8;
+            output[i * 4 + 3] = 255;
+        }
+        output
     }
 }

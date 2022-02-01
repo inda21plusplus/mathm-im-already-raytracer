@@ -13,22 +13,26 @@ pub enum MappingFunction {
     Circular,
 }
 
+fn lerp(from: f32, to: f32, t: f32) -> f32 {
+    from * (1. - t) + to * t
+}
+
 impl MappingFunction {
     pub fn get_direction(&self, x01: f32, y01: f32, fov: f32, aspect_ratio: f32) -> Vec3 {
         match self {
             Self::Linear => Vec3 {
-                x: x01.lerp(-1., 1.) * (fov / 2.).tan() * aspect_ratio,
-                y: y01.lerp(-1., 1.) * (fov / 2.).tan(),
+                x: lerp(-1., 1., x01) * (fov / 2.).tan() * aspect_ratio,
+                y: lerp(-1., 1., y01) * (fov / 2.).tan(),
                 z: -1.,
             },
             Self::Unlinear => Vec3 {
-                x: (x01.lerp(-1., 1.) * fov / 2.).tan() * aspect_ratio,
-                y: (y01.lerp(-1., 1.) * fov / 2.).tan(),
+                x: (lerp(-1., 1., x01) * fov / 2.).tan() * aspect_ratio,
+                y: (lerp(-1., 1., y01) * fov / 2.).tan(),
                 z: -1.,
             },
             Self::Circular => {
-                let x = x01.lerp(-1., 1.) * aspect_ratio;
-                let y = y01.lerp(-1., 1.);
+                let x = lerp(-1., 1., x01) * aspect_ratio;
+                let y = lerp(-1., 1., y01);
                 Vec3 {
                     x,
                     y,
