@@ -1,10 +1,9 @@
-use std::f32;
+use std::ops::Range;
 
-use itertools::Itertools;
-use rayon::prelude::*;
 use vek::Lerp;
 
 use crate::{
+    camera::Rays,
     shapes::{Intersect, Intersection, Shape},
     Camera, Image, Light, Ray, Vec3,
 };
@@ -16,6 +15,7 @@ pub struct RenderOptions {
     pub max_ray_depth: usize,
     pub soft_shadow_resolution: usize,
     pub use_randomness: bool,
+    pub clamp_colors: bool,
 }
 
 impl Default for RenderOptions {
@@ -27,6 +27,7 @@ impl Default for RenderOptions {
             max_ray_depth: 5,
             soft_shadow_resolution: 4,
             use_randomness: true,
+            clamp_colors: true,
         }
     }
 }
@@ -37,60 +38,75 @@ pub fn render(
     shapes: &[Shape],
     lights: &[Light],
 ) -> Image {
-    let upsampled_width = options.width * options.multisampling;
-    let upsampled_height = options.height * options.multisampling;
-    let mut buffer = vec![Vec3::zero(); upsampled_width * upsampled_height];
-    camera
-        .rays(upsampled_width, upsampled_height)
-        .collect::<Vec<(Ray, usize, usize)>>()
-        .par_iter()
-        .map(|&(ray, _, _)| ray_color(options, ray, shapes, lights, 0, None))
-        .collect_into_vec(&mut buffer);
-    let buffer = downsample(options, &buffer);
+    let mut buffer = vec![Vec3::zero(); options.width * options.height];
+    let rays = camera.rays(
+        options.width * options.multisampling,
+        options.height * options.multisampling,
+    );
+    crossbeam::scope(|s| {
+        for (range, output) in split_buffer(&mut buffer, 12) {
+            s.spawn(|_| render_part(options, range, output, &rays, shapes, lights));
+        }
+    })
+    .unwrap();
     Image::new(buffer, options.width, options.height)
 }
 
-fn downsample(options: &RenderOptions, buffer: &[Vec3]) -> Vec<Vec3> {
-    let original_width = options.multisampling * options.width;
-
-    (0..options.height)
-        .cartesian_product(0..options.width)
-        .map(|(row, col)| {
-            let mut color = Vec3::zero();
-            for r in 0..options.multisampling {
-                for c in 0..options.multisampling {
-                    let i = (row * options.multisampling + r) * original_width
-                        + col * options.multisampling
-                        + c;
-                    color += buffer[i];
-                }
+fn render_part(
+    options: &RenderOptions,
+    range: Range<usize>,
+    output: &mut [Vec3],
+    rays: &Rays,
+    shapes: &[Shape],
+    lights: &[Light],
+) {
+    let ms = options.multisampling;
+    for (out_i, pos_i) in range.enumerate() {
+        let base_x = pos_i % options.width;
+        let base_y = pos_i / options.width;
+        let mut color_sum = Vec3::zero();
+        for y in (0..ms).map(|s| base_y * ms + s) {
+            for x in (0..ms).map(|s| base_x * ms + s) {
+                let color = ray_color(options, rays.get(x, y), shapes, lights, 0, None);
+                color_sum += if options.clamp_colors {
+                    clamp_color(color)
+                } else {
+                    color
+                };
             }
-            color / (options.multisampling * options.multisampling) as f32
-        })
-        .collect()
+        }
+        let pixel_color = color_sum / (ms * ms) as f32;
+        output[out_i] = pixel_color;
+    }
 }
 
-fn ray_intersection<'s, Intersectable>(
-    ray: Ray,
-    intersectables: impl Iterator<Item = &'s Intersectable>,
-    ignore_normal: Option<Vec3>,
-) -> Option<(&'s Intersectable, Intersection)>
-where
-    Intersectable: Intersect,
-{
-    let mut min_dist = f32::MAX;
-    let mut closest: Option<(&Intersectable, Intersection)> = None;
-    for intersectable in intersectables {
-        let intersection = match intersectable.intersection(ray, ignore_normal) {
-            Some(i) if i.dist < min_dist => i,
-            _ => continue,
-        };
+#[rustfmt::skip]
+fn clamp_color(color: Vec3) -> Vec3 {
+    Vec3::new(
+        if color.x < 0. { 0. } else if color.x > 1. { 1. } else { color.x },
+        if color.y < 0. { 0. } else if color.y > 1. { 1. } else { color.y },
+        if color.z < 0. { 0. } else if color.z > 1. { 1. } else { color.z },
+    )
+}
 
-        min_dist = intersection.dist;
-        closest = Some((intersectable, intersection));
+fn split_buffer<'a, T>(mut buffer: &'a mut [T], parts: usize) -> Vec<(Range<usize>, &'a mut [T])> {
+    let mut v = Vec::with_capacity(parts);
+    let orig_len = buffer.len();
+    let mut start = 0;
+    for p in (1..=parts).rev() {
+        let (a, b) = buffer.split_at_mut(buffer.len() / p);
+        buffer = b;
+        let end = start + a.len();
+        v.push((start..end, a));
+        start = end;
     }
-
-    return closest;
+    assert_eq!(v[0].0.start, 0);
+    for i in 1..parts {
+        assert_eq!(v[i - 1].0.end, v[i].0.start, "{}", i);
+    }
+    assert_eq!(v[parts - 1].0.end, orig_len);
+    assert_eq!(buffer.len(), 0);
+    v
 }
 
 fn ray_color(
@@ -183,4 +199,27 @@ fn ray_color(
             0.
         },
     )
+}
+
+fn ray_intersection<'s, Intersectable>(
+    ray: Ray,
+    intersectables: impl Iterator<Item = &'s Intersectable>,
+    ignore_normal: Option<Vec3>,
+) -> Option<(&'s Intersectable, Intersection)>
+where
+    Intersectable: Intersect,
+{
+    let mut min_dist = f32::MAX;
+    let mut closest: Option<(&Intersectable, Intersection)> = None;
+    for intersectable in intersectables {
+        let intersection = match intersectable.intersection(ray, ignore_normal) {
+            Some(i) if i.dist < min_dist => i,
+            _ => continue,
+        };
+
+        min_dist = intersection.dist;
+        closest = Some((intersectable, intersection));
+    }
+
+    return closest;
 }

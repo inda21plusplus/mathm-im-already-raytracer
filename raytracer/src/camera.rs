@@ -50,7 +50,6 @@ impl Camera {
             camera: self,
             width,
             height,
-            current: 0,
         }
     }
 }
@@ -59,21 +58,12 @@ pub struct Rays<'c> {
     camera: &'c Camera,
     width: usize,
     height: usize,
-    current: usize,
 }
 
-impl<'c> Iterator for Rays<'c> {
-    type Item = (Ray, usize, usize);
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.current >= self.width * self.height {
-            return None;
-        }
-
+impl<'c> Rays<'c> {
+    pub fn get(&self, x: usize, y: usize) -> Ray {
         let v_fov = self.camera.fov;
         let aspect_ratio = self.width as f32 / self.height as f32;
-
-        let x = self.current % self.width;
-        let y = self.current / self.width;
 
         let x01 = x as f32 / (self.width - 1) as f32;
         let y01 = 1. - (y as f32 / (self.height - 1) as f32);
@@ -83,16 +73,6 @@ impl<'c> Iterator for Rays<'c> {
             .mapping_function
             .get_direction(x01, y01, v_fov, aspect_ratio);
 
-        self.current += 1;
-
-        Some((
-            Ray::new(self.camera.position, self.camera.orientation * direction),
-            x,
-            y,
-        ))
-    }
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        let size = self.width * self.height;
-        (size, Some(size))
+        Ray::new(self.camera.position, self.camera.orientation * direction)
     }
 }

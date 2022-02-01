@@ -39,3 +39,7 @@ Multisampling 8)
 ![Soft Shadows](images/211014-1.png)
 
 Soft shadows
+
+![Higher res](images/220201-0.png)
+
+Higher resolution render
