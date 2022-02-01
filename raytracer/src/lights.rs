@@ -38,14 +38,6 @@ impl Light {
             LightKind::Ambient => self.intensity,
         }
     }
-    // NOTE: if any other types of shapes are added to lights, refactor this,
-    // don't add more stuff like `get_plane` or whatever.
-    pub fn get_sphere(&self) -> Option<&Sphere> {
-        match &self.kind {
-            LightKind::Point(sphere) => Some(sphere),
-            _ => None,
-        }
-    }
 }
 
 impl Intersect for Light {

@@ -10,7 +10,6 @@ pub mod error;
 pub mod image;
 pub mod lights;
 pub mod material;
-pub mod pixel;
 pub mod presets;
 pub mod render;
 pub mod shapes;
@@ -20,7 +19,6 @@ pub use error::Error;
 pub use image::Image;
 pub use lights::Light;
 pub use material::Material;
-pub use pixel::Pixel;
 pub use render::render;
 
 pub type Vec3 = vek::vec::repr_simd::Vec3<f32>;
@@ -52,10 +50,15 @@ mod tests {
 
     #[test]
     fn test_orthogonal() {
-        let v = Vec3::new(1., -2., 7.);
-        let (a, b) = orthogonal(v);
-        assert_relative_eq!(v.dot(a), 0.);
-        assert_relative_eq!(v.dot(b), 0.);
-        assert_relative_eq!(a.dot(b), 0.);
+        for v in [
+            Vec3::new(1., -2., 7.),
+            Vec3::new(10., -1., 3.1),
+            Vec3::new(0., 1., 0.19),
+        ] {
+            let (a, b) = orthogonal(v);
+            assert_relative_eq!(v.dot(a), 0.);
+            assert_relative_eq!(v.dot(b), 0.);
+            assert_relative_eq!(a.dot(b), 0.);
+        }
     }
 }

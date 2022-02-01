@@ -24,6 +24,7 @@ fn main() {
             soft_shadow_resolution: 1,
             max_ray_depth: 1,
             use_randomness: false,
+            clamp_colors: true,
         })
         .add_system(render_s.system())
         .add_system(input_s.system())
