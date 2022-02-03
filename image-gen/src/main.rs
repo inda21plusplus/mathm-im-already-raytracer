@@ -36,10 +36,10 @@ fn main() -> Result<(), Error> {
     let (camera, shapes, lights) = presets::cornellbox();
 
     let options = RenderOptions {
-        width: 1000,
-        height: 1000,
-        multisampling: 12,
-        soft_shadow_resolution: 8,
+        width: 512,
+        height: 512,
+        multisampling: 2,
+        soft_shadow_resolution: 2,
         ..Default::default()
     };
     let image = render(&options, &camera, &shapes, &lights);
