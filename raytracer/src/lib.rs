@@ -48,35 +48,6 @@ fn orthogonal_smarter(v: Vec3) -> (Vec3, Vec3) {
     (a, b)
 }
 
-use std::arch::x86_64;
-// v = (x, y, z, 0)
-fn orthogonal_simd(v: x86_64::__m128) -> (x86_64::__m128, x86_64::__m128) {
-    unsafe {
-        let minus_v = x86_64::_mm_sub_ps(x86_64::_mm_set1_ps(0.), v);
-        //                                     xx yy zz 00
-        let mut a = x86_64::_mm_shuffle_ps::<0b00_01_10_00>(minus_v, v); // v × (1, 0, 0) = (0, v.z, -v.y)
-        let mut a_len_sq = x86_64::_mm_dp_ps::<0b1110_1111>(a, a);
-        let a_len_sq_lt_0_01 = x86_64::_mm_cmplt_ss(a_len_sq, x86_64::_mm_set1_ps(0.01));
-        let a_len_sq_lt_0_01 = x86_64::_mm_castps_si128(a_len_sq_lt_0_01);
-        if x86_64::_mm_cvtsi128_si32(a_len_sq_lt_0_01) != 0 {
-            //                             xx yy zz 00
-            a = x86_64::_mm_shuffle_ps::<0b01_00_11_00>(v, minus_v);
-            a_len_sq = x86_64::_mm_dp_ps::<0b1110_1111>(a, a);
-        }
-        let rsqrt = x86_64::_mm_rsqrt_ps(a_len_sq);
-        let a = x86_64::_mm_mul_ps(a, rsqrt);
-        let v_rot_l = x86_64::_mm_shuffle_ps::<0b10_01_11_00>(v, v);
-        let v_rot_r = x86_64::_mm_shuffle_ps::<0b01_11_10_00>(v, v);
-        let a_rot_l = x86_64::_mm_shuffle_ps::<0b10_01_11_00>(a, a);
-        let a_rot_r = x86_64::_mm_shuffle_ps::<0b01_11_10_00>(a, a);
-        let b = x86_64::_mm_sub_ps(
-            x86_64::_mm_mul_ps(v_rot_l, a_rot_r),
-            x86_64::_mm_mul_ps(v_rot_r, a_rot_l),
-        );
-        (a, b)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -98,71 +69,6 @@ mod tests {
             assert!(x.dot(a).abs() < GOOD_ENOUGH, "x={} x * a = {}", x, x.dot(a));
             assert!(x.dot(b).abs() < GOOD_ENOUGH, "x={} x * b = {}", x, x.dot(b));
             assert!(x.dot(b).abs() < GOOD_ENOUGH, "x={} a * b = {}", x, a.dot(b));
-        }
-    }
-
-    #[test]
-    fn test_orthogonal_simd() {
-        for x in VECTORS {
-            let (a, b) = unsafe {
-                let (a, b) = orthogonal_simd(x86_64::_mm_setr_ps(0., x.z, x.y, x.x));
-                let ax = x86_64::_mm_cvtss_f32(x86_64::_mm_shuffle_ps::<3>(a, a));
-                let ay = x86_64::_mm_cvtss_f32(x86_64::_mm_shuffle_ps::<2>(a, a));
-                let az = x86_64::_mm_cvtss_f32(x86_64::_mm_shuffle_ps::<1>(a, a));
-
-                let bx = x86_64::_mm_cvtss_f32(x86_64::_mm_shuffle_ps::<3>(b, b));
-                let by = x86_64::_mm_cvtss_f32(x86_64::_mm_shuffle_ps::<2>(b, b));
-                let bz = x86_64::_mm_cvtss_f32(x86_64::_mm_shuffle_ps::<1>(b, b));
-
-                (Vec3::new(ax, ay, az), Vec3::new(bx, by, bz))
-            };
-            let errorstr = format!(
-                "x={}, a={}, b={}, x*a={}, x*b={}, a*b={}",
-                x,
-                a,
-                b,
-                x.dot(a),
-                x.dot(b),
-                a.dot(b)
-            );
-            assert!(x.dot(a).abs() < GOOD_ENOUGH, "{}", errorstr);
-            assert!(x.dot(b).abs() < GOOD_ENOUGH, "{}", errorstr);
-            assert!(x.dot(b).abs() < GOOD_ENOUGH, "{}", errorstr);
-            assert!(a.magnitude() > 0.01, "{}", errorstr);
-            assert!(b.magnitude() > 0.01, "{}", errorstr);
-        }
-    }
-
-    extern crate test;
-    use test::{black_box, Bencher};
-
-    #[bench]
-    fn bench_orthogonal(b: &mut Bencher) {
-        let mut xs = VECTORS.into_iter().cycle();
-        b.iter(|| {
-            black_box(orthogonal(unsafe { xs.next().unwrap_unchecked() }));
-        });
-    }
-
-    #[bench]
-    fn bench_orthogonal_smarter(b: &mut Bencher) {
-        let mut xs = VECTORS.into_iter().cycle();
-        b.iter(|| {
-            black_box(orthogonal_smarter(unsafe { xs.next().unwrap_unchecked() }));
-        });
-    }
-
-    #[bench]
-    fn bench_orthogonal_simd(b: &mut Bencher) {
-        unsafe {
-            let xs = VECTORS
-                .into_iter()
-                .map(|x| x86_64::_mm_setr_ps(0., x.z, x.y, x.x))
-                .collect::<Vec<_>>();
-            let mut xs = xs.into_iter().cycle();
-            b.iter(|| {
-                black_box(orthogonal_simd(xs.next().unwrap_unchecked()));
-            });
         }
     }
 
