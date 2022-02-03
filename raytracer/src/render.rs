@@ -22,8 +22,8 @@ impl Default for RenderOptions {
     fn default() -> Self {
         Self {
             multisampling: 1,
-            width: 640,
-            height: 640,
+            width: 512,
+            height: 512,
             max_ray_depth: 5,
             soft_shadow_resolution: 4,
             use_randomness: true,

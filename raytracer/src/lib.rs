@@ -24,6 +24,22 @@ pub type Quaternion = vek::quaternion::repr_simd::Quaternion<f32>;
 pub type Mat3 = vek::mat::repr_simd::column_major::Mat3<f32>;
 pub type Mat4 = vek::mat::repr_simd::column_major::Mat4<f32>;
 
+pub use std::arch::x86_64::{
+    __m256 as f32x8, __m256i as i32x8, _mm256_set1_epi32 as splati32x8,
+    _mm256_set1_ps as splatf32x8,
+};
+#[derive(Clone, Copy)]
+pub struct Vec3x8 {
+    pub xs: f32x8,
+    pub ys: f32x8,
+    pub zs: f32x8,
+}
+impl Vec3x8 {
+    pub fn new(xs: f32x8, ys: f32x8, zs: f32x8) -> Self {
+        Self { xs, ys, zs }
+    }
+}
+
 // generates two arbitrary vectors that orthogonal to `v` and each other, and
 // normalized if `v` is
 fn orthogonal(v: Vec3) -> (Vec3, Vec3) {
@@ -74,6 +90,66 @@ fn orthogonal_simd(v: x86_64::__m128) -> (x86_64::__m128, x86_64::__m128) {
             x86_64::_mm_mul_ps(v_rot_r, a_rot_l),
         );
         (a, b)
+    }
+}
+
+fn orthogonal_simd_8(vs: Vec3x8) -> (Vec3x8, Vec3x8) {
+    unsafe {
+        // let mut a = Vec3::new(0., v.z, -v.y); // v × (1, 0, 0)
+        let mut axs = splatf32x8(0.);
+        let mut ays = vs.zs;
+        let mut azs = x86_64::_mm256_sub_ps(splatf32x8(0.), vs.ys);
+        let alensqs = x86_64::_mm256_add_ps(
+            x86_64::_mm256_mul_ps(ays, ays),
+            x86_64::_mm256_mul_ps(azs, azs),
+        );
+        // if a.magnitude_squared() < 0.01 {
+        let alensqlts = x86_64::_mm256_cmp_ps::<{ x86_64::_CMP_LT_OQ }>(alensqs, splatf32x8(0.01));
+        //     a = Vec3::new(-v.z, 0., v.x); // v × (0, 1, 0)
+        x86_64::_mm256_maskstore_ps(
+            &mut axs as *mut f32x8 as *mut f32,
+            x86_64::_mm256_castps_si256(alensqlts),
+            x86_64::_mm256_sub_ps(splatf32x8(0.), vs.zs),
+        );
+        x86_64::_mm256_maskstore_ps(
+            &mut ays as *mut f32x8 as *mut f32,
+            x86_64::_mm256_castps_si256(alensqlts),
+            splatf32x8(0.),
+        );
+        x86_64::_mm256_maskstore_ps(
+            &mut azs as *mut f32x8 as *mut f32,
+            x86_64::_mm256_castps_si256(alensqlts),
+            vs.xs,
+        );
+        // }
+        // a.normalize();
+        let alensqs = x86_64::_mm256_add_ps(
+            x86_64::_mm256_add_ps(
+                x86_64::_mm256_mul_ps(axs, axs),
+                x86_64::_mm256_mul_ps(ays, ays),
+            ),
+            x86_64::_mm256_mul_ps(azs, azs),
+        );
+        let arlen = x86_64::_mm256_rsqrt_ps(alensqs);
+        let axs = x86_64::_mm256_mul_ps(axs, arlen);
+        let ays = x86_64::_mm256_mul_ps(ays, arlen);
+        let azs = x86_64::_mm256_mul_ps(azs, arlen);
+
+        // let b = v.cross(a);
+        let bxs = x86_64::_mm256_sub_ps(
+            x86_64::_mm256_mul_ps(vs.ys, azs),
+            x86_64::_mm256_mul_ps(vs.zs, ays),
+        );
+        let bys = x86_64::_mm256_sub_ps(
+            x86_64::_mm256_mul_ps(vs.zs, axs),
+            x86_64::_mm256_mul_ps(vs.xs, azs),
+        );
+        let bzs = x86_64::_mm256_sub_ps(
+            x86_64::_mm256_mul_ps(vs.xs, ays),
+            x86_64::_mm256_mul_ps(vs.ys, axs),
+        );
+
+        (Vec3x8::new(axs, ays, azs), Vec3x8::new(bxs, bys, bzs))
     }
 }
 
@@ -133,6 +209,62 @@ mod tests {
         }
     }
 
+    #[test]
+    fn test_orthogonal_simd8() {
+        unsafe {
+            let mut i = 0;
+            while i + 7 < VECTORS.len() {
+                #[rustfmt::skip]
+                let vs = Vec3x8::new(
+                    x86_64::_mm256_setr_ps(
+                        VECTORS[i + 0].x, VECTORS[i + 1].x, VECTORS[i + 2].x, VECTORS[i + 3].x,
+                        VECTORS[i + 4].x, VECTORS[i + 5].x, VECTORS[i + 6].x, VECTORS[i + 7].x,
+                    ),
+                    x86_64::_mm256_setr_ps(
+                        VECTORS[i + 0].y, VECTORS[i + 1].y, VECTORS[i + 2].y, VECTORS[i + 3].y,
+                        VECTORS[i + 4].y, VECTORS[i + 5].y, VECTORS[i + 6].y, VECTORS[i + 7].y,
+                    ),
+                    x86_64::_mm256_setr_ps(
+                        VECTORS[i + 0].z, VECTORS[i + 1].z, VECTORS[i + 2].z, VECTORS[i + 3].z,
+                        VECTORS[i + 4].z, VECTORS[i + 5].z, VECTORS[i + 6].z, VECTORS[i + 7].z,
+                    ),
+                );
+                let (a_s, bs) = orthogonal_simd_8(vs);
+
+                let dot = x86_64::_mm256_add_ps(
+                    x86_64::_mm256_add_ps(
+                        x86_64::_mm256_mul_ps(a_s.xs, bs.xs),
+                        x86_64::_mm256_mul_ps(a_s.ys, bs.ys),
+                    ),
+                    x86_64::_mm256_mul_ps(a_s.zs, bs.zs),
+                );
+
+                let dotltsmall =
+                    x86_64::_mm256_cmp_ps::<{ x86_64::_CMP_LT_OQ }>(dot, splatf32x8(GOOD_ENOUGH));
+                let dotgtnegsmall =
+                    x86_64::_mm256_cmp_ps::<{ x86_64::_CMP_GT_OQ }>(dot, splatf32x8(-GOOD_ENOUGH));
+                let absdotltsmall = x86_64::_mm256_and_ps(dotltsmall, dotgtnegsmall);
+
+                #[rustfmt::skip]
+                let oks: [u32; 8] = [
+                    std::mem::transmute(x86_64::_mm256_cvtss_f32(x86_64::_mm256_permute_ps::<0>(absdotltsmall))),
+                    std::mem::transmute(x86_64::_mm256_cvtss_f32(x86_64::_mm256_permute_ps::<1>(absdotltsmall))),
+                    std::mem::transmute(x86_64::_mm256_cvtss_f32(x86_64::_mm256_permute_ps::<2>(absdotltsmall))),
+                    std::mem::transmute(x86_64::_mm256_cvtss_f32(x86_64::_mm256_permute_ps::<3>(absdotltsmall))),
+                    std::mem::transmute(x86_64::_mm256_cvtss_f32(x86_64::_mm256_permute_ps::<4>(absdotltsmall))),
+                    std::mem::transmute(x86_64::_mm256_cvtss_f32(x86_64::_mm256_permute_ps::<5>(absdotltsmall))),
+                    std::mem::transmute(x86_64::_mm256_cvtss_f32(x86_64::_mm256_permute_ps::<6>(absdotltsmall))),
+                    std::mem::transmute(x86_64::_mm256_cvtss_f32(x86_64::_mm256_permute_ps::<7>(absdotltsmall))),
+                ];
+                for (j, ok) in oks.into_iter().enumerate() {
+                    assert!(ok == 0xffffffff, "index: {}", i + j,);
+                }
+
+                i += 8;
+            }
+        }
+    }
+
     extern crate test;
     use test::{black_box, Bencher};
 
@@ -162,6 +294,106 @@ mod tests {
             let mut xs = xs.into_iter().cycle();
             b.iter(|| {
                 black_box(orthogonal_simd(xs.next().unwrap_unchecked()));
+            });
+        }
+    }
+
+    #[bench]
+    fn bench_orthogonal_simd8(b: &mut Bencher) {
+        unsafe {
+            let mut i = 0;
+            b.iter(|| {
+                #[rustfmt::skip]
+                let vs = Vec3x8::new(
+                    x86_64::_mm256_setr_ps(
+                        VECTORS[i + 0].x, VECTORS[i + 1].x, VECTORS[i + 2].x, VECTORS[i + 3].x,
+                        VECTORS[i + 4].x, VECTORS[i + 5].x, VECTORS[i + 6].x, VECTORS[i + 7].x,
+                    ),
+                    x86_64::_mm256_setr_ps(
+                        VECTORS[i + 0].y, VECTORS[i + 1].y, VECTORS[i + 2].y, VECTORS[i + 3].y,
+                        VECTORS[i + 4].y, VECTORS[i + 5].y, VECTORS[i + 6].y, VECTORS[i + 7].y,
+                    ),
+                    x86_64::_mm256_setr_ps(
+                        VECTORS[i + 0].z, VECTORS[i + 1].z, VECTORS[i + 2].z, VECTORS[i + 3].z,
+                        VECTORS[i + 4].z, VECTORS[i + 5].z, VECTORS[i + 6].z, VECTORS[i + 7].z,
+                    ),
+                );
+                black_box(orthogonal_simd_8(vs));
+
+                i += 8;
+                if i + 7 > VECTORS.len() {
+                    i = 0;
+                }
+            });
+        }
+    }
+
+    #[bench]
+    fn bench_orthogonal_simd8_same(b: &mut Bencher) {
+        unsafe {
+            #[rustfmt::skip]
+            let vs = Vec3x8::new(
+                x86_64::_mm256_setr_ps(
+                    VECTORS[0].x, VECTORS[1].x, VECTORS[2].x, VECTORS[3].x,
+                    VECTORS[4].x, VECTORS[5].x, VECTORS[6].x, VECTORS[7].x,
+                ),
+                x86_64::_mm256_setr_ps(
+                    VECTORS[0].y, VECTORS[1].y, VECTORS[2].y, VECTORS[3].y,
+                    VECTORS[4].y, VECTORS[5].y, VECTORS[6].y, VECTORS[7].y,
+                ),
+                x86_64::_mm256_setr_ps(
+                    VECTORS[0].z, VECTORS[1].z, VECTORS[2].z, VECTORS[3].z,
+                    VECTORS[4].z, VECTORS[5].z, VECTORS[6].z, VECTORS[7].z,
+                ),
+            );
+            b.iter(|| {
+                black_box(orthogonal_simd_8(black_box(vs)));
+            });
+        }
+    }
+
+    #[bench]
+    fn bench_rays(b: &mut Bencher) {
+        let width = 64;
+        let height = 64;
+        let camera = camera::Camera {
+            position: Vec3::zero(),
+            orientation: Quaternion::rotation_3d(1.231, Vec3::new(1., -5., 2.).normalized()),
+            fov: 45f32.to_radians(),
+            mapping_function: camera::MappingFunction::Linear,
+        };
+        let rays = camera.rays(width, height);
+        b.iter(|| {
+            for y in 0..height {
+                for x in 0..width {
+                    black_box(rays.get(black_box(x), black_box(y)));
+                }
+            }
+        });
+    }
+
+    #[bench]
+    fn bench_rays_simd(b: &mut Bencher) {
+        unsafe {
+            let width = 64;
+            let height = 64;
+            let camera = camera::Camera {
+                position: Vec3::zero(),
+                orientation: Quaternion::rotation_3d(1.231, Vec3::new(1., -5., 2.).normalized()),
+                fov: 45f32.to_radians(),
+                mapping_function: camera::MappingFunction::Linear,
+            };
+            let rays = camera.rays(width, height);
+            let inc = x86_64::_mm256_setr_epi32(0, 1, 2, 3, 4, 5, 6, 7);
+            b.iter(|| {
+                for y in 0..height {
+                    for x in (0..width).step_by(8) {
+                        black_box(rays.get_simd(
+                            x86_64::_mm256_add_epi32(x86_64::_mm256_set1_epi32(x as i32), inc),
+                            y,
+                        ));
+                    }
+                }
             });
         }
     }
