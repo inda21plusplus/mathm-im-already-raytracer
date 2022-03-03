@@ -2,6 +2,8 @@
 
 A raytracer written by Mathias Magnusson
 
+I'm not sorry for the very cringe name.
+
 ## Pictures
 
 ![Cornellbox](images/211010-0.png)
