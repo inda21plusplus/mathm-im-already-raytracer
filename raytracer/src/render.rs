@@ -43,12 +43,19 @@ pub fn render(
         options.width * options.multisampling,
         options.height * options.multisampling,
     );
-    crossbeam::scope(|s| {
-        for (range, output) in split_buffer(&mut buffer, 12) {
-            s.spawn(|_| render_part(options, range, output, &rays, shapes, lights));
-        }
-    })
-    .unwrap();
+    #[cfg(feature = "parallel")]
+    {
+        crossbeam::scope(|s| {
+            for (range, output) in split_buffer(&mut buffer, 12) {
+                s.spawn(|_| render_part(options, range, output, &rays, shapes, lights));
+            }
+        })
+        .unwrap();
+    }
+    #[cfg(not(feature = "parallel"))]
+    {
+        render_part(options, 0..buffer.len(), &mut buffer, &rays, shapes, lights);
+    }
     Image::new(buffer, options.width, options.height)
 }
 

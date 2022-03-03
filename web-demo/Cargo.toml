@@ -1,0 +1,24 @@
+[package]
+name = "web-demo"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+getrandom = { features = ["js"] }
+
+im-already-raytracer = { path = "../raytracer", default_features = false }
+
+log = "0.4"
+pixels = "0.9"
+wgpu = { version = "0.12", features = ["webgl"] }
+winit = "0.26"
+winit_input_helper = "0.11"
+
+console_error_panic_hook = "0.1"
+console_log = "0.2"
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+web-sys = "0.3"
+js-sys = "0.3"

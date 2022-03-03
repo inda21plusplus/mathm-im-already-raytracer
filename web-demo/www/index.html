@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <style>
+        * {
+            padding: 0;
+            margin: 0;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            background-color: black;
+            overflow: hidden;
+        }
+
+        .top-bar {
+            display: flex;
+            justify-content: center;
+            align-items: stretch;
+            gap: 10px;
+            color: #eee;
+            font-family: Fira-mono, 'Ubuntu Mono', monospace;
+            background-color: #444;
+            padding: 3px 0;
+        }
+
+        .remove-tutorial:hover {
+            cursor: pointer;
+        }
+        .remove-tutorial:hover::after {
+            content: "(click me!)"
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        input[type="range"] {
+            width: 120px;
+        }
+
+        input[type="number"] {
+            width: 50px;
+        }
+
+        .sep {
+            width: 5px;
+            background-color: #666;
+        }
+
+        a, a:visited {
+            color: white;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <section class="top-bar tutorial">
+        <span class="remove-tutorial">
+            Use W, A, S and D to move around and the arrow keys to look around
+        </span>
+
+        <div class="sep"></div>
+
+        <a href="https://github.com/inda21plusplus/mathm-im-already-raytracer">Source code</a>
+    </section>
+
+    <section class="top-bar hidden">
+        <label for="w">Width: </label>
+        <input type="range" min="10" max="200" step="1" id="w" />
+        <label for="w" class="value w"></label>
+
+        <div class="sep"></div>
+
+        <label for="h">Height: </label>
+        <input type="range" min="10" max="200" step="1" id="h" />
+        <label for="h" class="value h"></label>
+
+        <div class="sep"></div>
+
+        <label for="r">Randomize reflections: </label>
+        <input type="checkbox" id="r" />
+
+        <div class="sep"></div>
+
+        <label for="d">Max ray depth: </label>
+        <input type="number" id="d" />
+
+        <div class="sep"></div>
+
+        <a href="https://github.com/inda21plusplus/mathm-im-already-raytracer">Source code</a>
+    </section>
+
+    <script type="module">
+        import init, { set_res, set_key, set_random, set_depth } from "./web-demo.js";
+        await init();
+
+        set_res(0, 0);
+
+        function removeTutorial() {
+            let s = document.querySelector(".remove-tutorial");
+            if (!s) return;
+            s.parentElement.parentElement.removeChild(s.parentElement);
+            document.querySelector(".hidden").classList.remove("hidden");
+        };
+        document.querySelector(".remove-tutorial").onclick = removeTutorial;
+
+        let canvas = document.querySelector("canvas");
+        canvas.onkeydown = ({ key }) => {
+            removeTutorial();
+            set_key(key, true);
+        };
+        canvas.onkeyup = ({ key }) => {
+            removeTutorial();
+            set_key(key, false);
+        };
+
+        function setRes(width, height) {
+            if (width) {
+                document.querySelector(".value.w").innerText = width;
+                document.querySelector("#w").value = width;
+            }
+            if (height) {
+                document.querySelector(".value.h").innerText = height;
+                document.querySelector("#h").value = height;
+            }
+            set_res(width, height);
+        }
+        document.querySelector("#w").oninput = function() { setRes(this.value, 0) };
+        document.querySelector("#h").oninput = function() { setRes(0, this.value) };
+        document.querySelector("#r").oninput = function() { set_random(this.checked) };
+        document.querySelector("#r").checked = true;
+        document.querySelector("#d").oninput = function() { set_depth(this.value) };
+        document.querySelector("#d").value = 3;
+        setRes(60, 40);
+    </script>
+</body>
+</html>

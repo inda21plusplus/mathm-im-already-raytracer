@@ -132,13 +132,19 @@ pub fn cornellbox() -> (Camera, Vec<Shape>, Vec<Light>) {
             mapping_function: MappingFunction::Linear,
         },
         shapes,
-        vec![Light {
-            intensity: 7.,
-            kind: LightKind::Point(Sphere {
-                center: Vec3::new(0., 4.5, 0.),
-                radius: 0.5,
-            }),
-        }],
+        vec![
+            Light {
+                intensity: 7.,
+                kind: LightKind::Point(Sphere {
+                    center: Vec3::new(0., 4.5, 0.),
+                    radius: 0.5,
+                }),
+            },
+            Light {
+                intensity: 0.05,
+                kind: LightKind::Ambient,
+            },
+        ],
     )
 }
 

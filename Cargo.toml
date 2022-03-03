@@ -1,6 +1,8 @@
 [workspace]
 
-members = ["raytracer", "image-gen", "real-time"]
+resolver = "2"
+
+members = ["raytracer", "image-gen", "real-time", "web-demo"]
 
 [profile.release]
 # lto = true

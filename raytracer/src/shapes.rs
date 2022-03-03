@@ -29,11 +29,6 @@ impl Intersection {
         let b_rot = get_random() * FRAC_PI_2;
         let normal =
             Quaternion::rotation_3d(a_rot, a) * Quaternion::rotation_3d(b_rot, b) * self.normal;
-        assert!(
-            self.normal.dot(normal) >= 0.,
-            "Randomization made normal flip direction, rotated by ({}, {}), orig normal: {}, new normal: {}, axises: {}, {}",
-            a_rot, b_rot, self.normal, normal, a, b,
-        );
 
         Ray::new(
             self.point,

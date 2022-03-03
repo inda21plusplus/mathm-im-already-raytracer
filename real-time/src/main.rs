@@ -1,5 +1,3 @@
-use std::process::exit;
-
 use im_already_raytracer::camera::MappingFunction;
 use im_already_raytracer::render::RenderOptions;
 use im_already_raytracer::shapes::Shape;
@@ -11,18 +9,18 @@ use bevy_pixels::prelude::*;
 
 fn main() {
     let (camera, shapes, lights) = presets::cornellbox();
-    App::build()
+    App::new()
         .add_plugins(DefaultPlugins)
         .add_plugin(PixelsPlugin)
         .insert_resource(camera)
         .insert_resource(shapes)
         .insert_resource(lights)
         .insert_resource(RenderOptions {
-            width: 1280,
-            height: 720,
+            width: 128,
+            height: 72,
             multisampling: 1,
             soft_shadow_resolution: 1,
-            max_ray_depth: 1,
+            max_ray_depth: 3,
             use_randomness: false,
             clamp_colors: true,
         })
@@ -67,10 +65,6 @@ fn input_s(
     mut render_options: ResMut<RenderOptions>,
 ) {
     use std::f32::consts::FRAC_PI_2;
-
-    if keyboard.just_pressed(KeyCode::Escape) {
-        exit(0);
-    }
 
     if camera.is_added() {
         *lfov = (camera.fov + FRAC_PI_2).tan();
@@ -144,10 +138,10 @@ fn input_s(
         camera.mapping_function = MappingFunction::Circular;
     }
     if keyboard.just_pressed(KeyCode::Minus) && render_options.multisampling > 1 {
-        render_options.multisampling /= 2;
+        render_options.multisampling -= 1;
     }
     if keyboard.just_pressed(KeyCode::Equals) {
-        render_options.multisampling *= 2;
+        render_options.multisampling += 1;
     }
     if keyboard.just_pressed(KeyCode::LBracket) && render_options.soft_shadow_resolution > 0 {
         render_options.soft_shadow_resolution -= 1;

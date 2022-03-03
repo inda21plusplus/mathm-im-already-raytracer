@@ -15,6 +15,7 @@ pub use image::Image;
 pub use lights::Light;
 pub use material::Material;
 pub use render::render;
+pub use shapes::Shape;
 
 pub type Vec3 = vek::vec::repr_simd::Vec3<f32>;
 pub type Vec4 = vek::vec::repr_simd::Vec4<f32>;
@@ -24,20 +25,8 @@ pub type Quaternion = vek::quaternion::repr_simd::Quaternion<f32>;
 pub type Mat3 = vek::mat::repr_simd::column_major::Mat3<f32>;
 pub type Mat4 = vek::mat::repr_simd::column_major::Mat4<f32>;
 
-// generates two arbitrary vectors that orthogonal to `v` and each other, and
-// normalized if `v` is
+// generates two arbitrary vectors that orthogonal to `v` and each other
 fn orthogonal(v: Vec3) -> (Vec3, Vec3) {
-    let mut a = v.cross(Vec3::unit_x());
-    if a.magnitude_squared() < 0.01 {
-        a = v.cross(Vec3::unit_y());
-    }
-    a.normalize();
-    let b = v.cross(a);
-
-    (a, b)
-}
-
-fn orthogonal_smarter(v: Vec3) -> (Vec3, Vec3) {
     let mut a = Vec3::new(0., v.z, -v.y); // v × (1, 0, 0)
     if a.magnitude_squared() < 0.01 {
         a = Vec3::new(-v.z, 0., v.x); // v × (0, 1, 0)
@@ -56,16 +45,6 @@ mod tests {
     fn test_orthogonal() {
         for x in VECTORS {
             let (a, b) = orthogonal(x);
-            assert!(x.dot(a).abs() < GOOD_ENOUGH, "x={} x * a = {}", x, x.dot(a));
-            assert!(x.dot(b).abs() < GOOD_ENOUGH, "x={} x * b = {}", x, x.dot(b));
-            assert!(x.dot(b).abs() < GOOD_ENOUGH, "x={} a * b = {}", x, a.dot(b));
-        }
-    }
-
-    #[test]
-    fn test_orthogonal_smarter() {
-        for x in VECTORS {
-            let (a, b) = orthogonal_smarter(x);
             assert!(x.dot(a).abs() < GOOD_ENOUGH, "x={} x * a = {}", x, x.dot(a));
             assert!(x.dot(b).abs() < GOOD_ENOUGH, "x={} x * b = {}", x, x.dot(b));
             assert!(x.dot(b).abs() < GOOD_ENOUGH, "x={} a * b = {}", x, a.dot(b));
